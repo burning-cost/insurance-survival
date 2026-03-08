@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "insurance-survival"
+version = "0.1.0"
+description = "Survival analysis for UK insurance pricing: cure models, CLV, lapse tables. Extends lifelines with insurance-specific gaps."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Burning Cost", email = "pricing.frontier@gmail.com" }]
+keywords = ["insurance", "survival", "lapse", "CLV", "lifelines", "actuarial", "pricing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "License :: OSI Approved :: MIT License",
+]
+
+dependencies = [
+    "polars>=1.0.0",
+    "lifelines>=0.27.0",
+    "numpy>=1.24.0",
+    "scipy>=1.11.0",
+]
+
+[project.optional-dependencies]
+mlflow = ["mlflow>=2.10.0"]
+excel = ["openpyxl>=3.1.0"]
+catboost = ["catboost>=1.2.0"]
+plot = ["matplotlib>=3.7.0"]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+]
+all = [
+    "mlflow>=2.10.0",
+    "openpyxl>=3.1.0",
+    "catboost>=1.2.0",
+    "matplotlib>=3.7.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/burning-cost/insurance-survival"
+Repository = "https://github.com/burning-cost/insurance-survival"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/insurance_survival"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src/insurance_survival"]
