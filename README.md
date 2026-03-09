@@ -1,5 +1,8 @@
 # insurance-survival
+
 [![Tests](https://github.com/burning-cost/insurance-survival/actions/workflows/tests.yml/badge.svg)](https://github.com/burning-cost/insurance-survival/actions/workflows/tests.yml)
+[![PyPI](https://img.shields.io/pypi/v/insurance-survival)](https://pypi.org/project/insurance-survival/)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 
 Survival analysis for UK insurance pricing. Extends [lifelines](https://lifelines.readthedocs.io/) with the gaps that matter for personal lines pricing teams.
 
@@ -150,3 +153,18 @@ Tests run on Databricks. See `notebooks/insurance_survival_demo.ipynb` for a ful
 Required: `polars>=1.0.0`, `lifelines>=0.27.0`, `numpy>=1.24.0`, `scipy>=1.11.0`
 
 Optional: `mlflow` (Model Registry), `openpyxl` (Excel export), `matplotlib` (plots), `catboost` (claim frequency model in SurvivalCLV)
+
+## Read more
+
+[Survival Models for Insurance Retention](https://burning-cost.github.io/2026/03/08/survival-models-for-insurance-retention.html) — why logistic churn models get renewal pricing wrong and how cure models fix it.
+
+## Related libraries
+
+| Library | Why it's relevant |
+|---------|------------------|
+| [insurance-demand](https://github.com/burning-cost/insurance-demand) | Demand and elasticity modelling — the commercial complement: survival gives you tenure, demand gives you price sensitivity |
+| [insurance-optimise](https://github.com/burning-cost/insurance-optimise) | Constrained portfolio rate optimisation — uses CLV and retention outputs from this library as inputs |
+| [insurance-monitoring](https://github.com/burning-cost/insurance-monitoring) | Model monitoring — PSI and A/E drift tracking for deployed retention models |
+| [insurance-datasets](https://github.com/burning-cost/insurance-datasets) | Synthetic UK motor and home datasets — use to prototype the cure model before applying to real data |
+
+[All Burning Cost libraries →](https://burning-cost.github.io)
