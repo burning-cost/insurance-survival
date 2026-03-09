@@ -1,4 +1,5 @@
 # insurance-survival
+[![Tests](https://github.com/burning-cost/insurance-survival/actions/workflows/tests.yml/badge.svg)](https://github.com/burning-cost/insurance-survival/actions/workflows/tests.yml)
 
 Survival analysis for UK insurance pricing. Extends [lifelines](https://lifelines.readthedocs.io/) with the gaps that matter for personal lines pricing teams.
 
