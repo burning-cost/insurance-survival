@@ -88,8 +88,9 @@ pip install "insurance-survival[mlflow,plot,excel]"
 ## Quick start
 
 ```python
+import numpy as np
 import polars as pl
-from datetime import date
+from datetime import date, timedelta
 from insurance_survival import (
     ExposureTransformer,
     WeibullMixtureCureFitter,
@@ -97,8 +98,52 @@ from insurance_survival import (
     LapseTable,
 )
 
+# Synthetic UK motor policy transactions — 1,000 policies
+rng = np.random.default_rng(42)
+n = 1_000
+
+policy_id       = np.arange(1, n + 1)
+start_date      = [date(2022, 1, 1) + timedelta(days=int(d))
+                   for d in rng.integers(0, 365, n)]
+# Duration in days: mixture of short (lapsed) and long (retained) tenures
+tenure_days     = np.where(
+    rng.uniform(size=n) < 0.35,          # 35% lapse
+    rng.integers(30, 365, n),             # lapsed: 1 month to 1 year
+    rng.integers(365, 1460, n),           # retained: 1 to 4 years
+)
+end_date        = [start_date[i] + timedelta(days=int(tenure_days[i]))
+                   for i in range(n)]
+# Event: 1 = lapsed, 0 = censored (still active at observation cutoff)
+observation_cutoff = date(2025, 12, 31)
+event           = np.array([
+    1 if end_date[i] < observation_cutoff else 0
+    for i in range(n)
+])
+ncd_level       = rng.integers(0, 9, n).astype(float)
+channel_direct  = rng.choice([0, 1], size=n).astype(float)
+annual_premium  = rng.uniform(300, 1200, n)
+annual_premium_scaled = (annual_premium - annual_premium.mean()) / annual_premium.std()
+expected_loss   = annual_premium * rng.uniform(0.4, 0.8, n)
+
+transactions = pl.DataFrame({
+    "policy_id":      policy_id,
+    "start_date":     start_date,
+    "end_date":       end_date,
+    "event":          event,
+    "ncd_level":      ncd_level,
+    "channel_direct": channel_direct,
+    "annual_premium": annual_premium,
+    "annual_premium_scaled": annual_premium_scaled,
+    "expected_loss":  expected_loss,
+})
+
+policies = transactions.select([
+    "policy_id", "ncd_level", "channel_direct",
+    "annual_premium", "annual_premium_scaled", "expected_loss",
+])
+
 # Step 1: transform raw policy transactions
-transformer = ExposureTransformer(observation_cutoff=date(2025, 12, 31))
+transformer = ExposureTransformer(observation_cutoff=observation_cutoff)
 survival_df = transformer.fit_transform(transactions)
 
 # Step 2: fit the cure model
