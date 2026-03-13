@@ -4,7 +4,9 @@
 [![PyPI](https://img.shields.io/pypi/v/insurance-survival)](https://pypi.org/project/insurance-survival/)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 
-Survival analysis for UK insurance pricing. Extends [lifelines](https://lifelines.readthedocs.io/) with the gaps that matter for personal lines pricing teams.
+Survival analysis for UK insurance pricing.
+
+Merged from: `insurance-survival` (core), `insurance-cure` (mixture cure models), `insurance-competing-risks` (Fine-Gray regression), and `insurance-recurrent` (shared frailty models). Extends [lifelines](https://lifelines.readthedocs.io/) with the gaps that matter for personal lines pricing teams.
 
 v0.2.0 adds three subpackages: `cure` (mixture cure models), `competing_risks` (Fine-Gray regression), and `recurrent` (shared frailty models). All three fill confirmed Python ecosystem gaps.
 
