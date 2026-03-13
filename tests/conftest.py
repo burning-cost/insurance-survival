@@ -323,3 +323,70 @@ def fitted_lifelines_fitter(small_cure_dgp: pl.DataFrame) -> object:
         event_col="event",
     )
     return fitter
+
+
+# ---------------------------------------------------------------------------
+# Cure subpackage fixtures (insurance_survival.cure)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def motor_df():
+    """Small motor dataset with known cure fraction ~0.40."""
+    from insurance_survival.cure.simulate import simulate_motor_panel
+    return simulate_motor_panel(n_policies=500, cure_fraction=0.40, seed=42)
+
+
+@pytest.fixture(scope="session")
+def motor_df_large():
+    """Larger motor dataset for convergence tests."""
+    from insurance_survival.cure.simulate import simulate_motor_panel
+    return simulate_motor_panel(n_policies=1500, cure_fraction=0.35, seed=99)
+
+
+@pytest.fixture(scope="session")
+def pet_df():
+    """Pet insurance dataset."""
+    from insurance_survival.cure.simulate import simulate_pet_panel
+    return simulate_pet_panel(n_policies=500, cure_fraction=0.35, seed=7)
+
+
+@pytest.fixture(scope="session")
+def fitted_weibull(motor_df):
+    """Fitted WeibullMixtureCure model (session-scoped for speed)."""
+    from insurance_survival.cure import WeibullMixtureCure
+    model = WeibullMixtureCure(
+        incidence_formula="ncb_years + age + vehicle_age",
+        latency_formula="ncb_years + age",
+        n_em_starts=2,
+        max_iter=50,
+        random_state=42,
+    )
+    model.fit(motor_df, duration_col="tenure_months", event_col="claimed")
+    return model
+
+
+@pytest.fixture(scope="session")
+def fitted_lognormal(motor_df):
+    """Fitted LogNormalMixtureCure model."""
+    from insurance_survival.cure import LogNormalMixtureCure
+    model = LogNormalMixtureCure(
+        incidence_formula="ncb_years + age",
+        latency_formula="ncb_years",
+        n_em_starts=2,
+        max_iter=50,
+        random_state=42,
+    )
+    model.fit(motor_df, duration_col="tenure_months", event_col="claimed")
+    return model
+
+
+@pytest.fixture(scope="session")
+def fitted_promotion(motor_df):
+    """Fitted PromotionTimeCure model."""
+    from insurance_survival.cure import PromotionTimeCure
+    model = PromotionTimeCure(
+        formula="ncb_years + age + vehicle_age",
+        random_state=42,
+    )
+    model.fit(motor_df, duration_col="tenure_months", event_col="claimed")
+    return model

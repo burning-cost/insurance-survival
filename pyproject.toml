@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "insurance-survival"
-version = "0.1.0"
-description = "Survival analysis for UK insurance pricing: cure models, CLV, lapse tables. Extends lifelines with insurance-specific gaps."
+version = "0.2.0"
+description = "Survival analysis for UK insurance pricing: cure models, competing risks, recurrent events, CLV, lapse tables. Extends lifelines with insurance-specific gaps."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Burning Cost", email = "pricing.frontier@gmail.com" }]
-keywords = ["insurance", "survival", "lapse", "CLV", "lifelines", "actuarial", "pricing"]
+keywords = ["insurance", "survival", "lapse", "CLV", "lifelines", "actuarial", "pricing", "cure-model", "competing-risks", "frailty", "recurrent-events"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Financial and Insurance Industry",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -28,13 +28,16 @@ dependencies = [
     "numpy>=1.24.0",
     "scipy>=1.11.0",
     "pyarrow>=12.0",
+    "pandas>=2.0",
+    "scikit-learn>=1.1",
+    "joblib>=1.2",
+    "matplotlib>=3.7.0",
 ]
 
 [project.optional-dependencies]
 mlflow = ["mlflow>=2.10.0"]
 excel = ["openpyxl>=3.1.0"]
 catboost = ["catboost>=1.2.0"]
-plot = ["matplotlib>=3.7.0"]
 dev = [
     "pytest>=7.4.0",
     "pyarrow>=12.0",
@@ -58,7 +61,7 @@ packages = ["src/insurance_survival"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = ["test_*.py"]
+python_files = ["test_*.py", "cure_test_*.py", "competing_risks_test_*.py", "recurrent_test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"

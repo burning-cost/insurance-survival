@@ -113,7 +113,7 @@ class LifelinesMLflowWrapper:
         import pandas as pd
         import polars as pl
 
-        from .cure import WeibullMixtureCureFitter
+        from ._cure_legacy import WeibullMixtureCureFitter
 
         if self.fitter is None:
             raise RuntimeError(

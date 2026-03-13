@@ -274,7 +274,7 @@ class SurvivalCLV:
 
         # For lifelines fitters: use predict_survival_function
         # For WeibullMixtureCureFitter: use our own predict_survival_function
-        from .cure import WeibullMixtureCureFitter
+        from ._cure_legacy import WeibullMixtureCureFitter
 
         is_cure_model = isinstance(self.survival_model, WeibullMixtureCureFitter)
 
@@ -375,7 +375,7 @@ class SurvivalCLV:
 
     def _get_cure_probs(self, df: pl.DataFrame) -> list[float]:
         """Extract cure probabilities if model supports it."""
-        from .cure import WeibullMixtureCureFitter
+        from ._cure_legacy import WeibullMixtureCureFitter
 
         if isinstance(self.survival_model, WeibullMixtureCureFitter):
             probs = self.survival_model.predict_cure(df)

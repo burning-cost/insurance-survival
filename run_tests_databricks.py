@@ -1,5 +1,7 @@
 """
 Upload insurance-survival to Databricks and run pytest via serverless compute.
+
+v0.2.0: handles subpackage directories (cure, competing_risks, recurrent).
 """
 
 from __future__ import annotations
@@ -23,15 +25,20 @@ def load_env(path: str) -> None:
 load_env(os.path.expanduser("~/.config/burning-cost/databricks.env"))
 
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.service import workspace as ws_svc, jobs
+from databricks.sdk.service import workspace as ws_svc
 
 w = WorkspaceClient()
 
 PROJECT_ROOT = Path(__file__).parent
 WORKSPACE_PATH = "/Workspace/insurance-survival"
+PKG_ROOT = PROJECT_ROOT / "src" / "insurance_survival"
 
-SRC_FILES = list((PROJECT_ROOT / "src" / "insurance_survival").glob("*.py"))
-TEST_FILES = list((PROJECT_ROOT / "tests").glob("*.py"))
+
+def ensure_dir(remote_path: str) -> None:
+    try:
+        w.workspace.mkdirs(remote_path)
+    except Exception:
+        pass
 
 
 def upload_file(local_path: Path, remote_path: str) -> None:
@@ -46,60 +53,62 @@ def upload_file(local_path: Path, remote_path: str) -> None:
     print(f"  Uploaded: {remote_path}")
 
 
+def upload_package_dir(local_dir: Path, remote_dir: str) -> None:
+    """Recursively upload a Python package directory."""
+    ensure_dir(remote_dir)
+    for item in sorted(local_dir.iterdir()):
+        if item.name.startswith(".") or item.name == "__pycache__":
+            continue
+        remote_item = f"{remote_dir}/{item.name}"
+        if item.is_dir() and (item / "__init__.py").exists():
+            upload_package_dir(item, remote_item)
+        elif item.is_file() and item.suffix == ".py":
+            upload_file(item, remote_item)
+
+
 print("Uploading files to Databricks workspace...")
 
+# Create workspace structure
 for subpath in [
     WORKSPACE_PATH,
     f"{WORKSPACE_PATH}/src",
     f"{WORKSPACE_PATH}/src/insurance_survival",
     f"{WORKSPACE_PATH}/tests",
 ]:
-    try:
-        w.workspace.mkdirs(subpath)
-    except Exception:
-        pass
+    ensure_dir(subpath)
 
-for f in SRC_FILES:
-    upload_file(f, f"{WORKSPACE_PATH}/src/insurance_survival/{f.name}")
+# Upload the full package (handles subpackages recursively)
+upload_package_dir(PKG_ROOT, f"{WORKSPACE_PATH}/src/insurance_survival")
 
-for f in TEST_FILES:
+# Upload tests
+for f in sorted((PROJECT_ROOT / "tests").glob("*.py")):
     upload_file(f, f"{WORKSPACE_PATH}/tests/{f.name}")
 
 upload_file(PROJECT_ROOT / "pyproject.toml", f"{WORKSPACE_PATH}/pyproject.toml")
 
 print("\nCreating test notebook...")
 
-# Key fix: use PYTHONDONTWRITEBYTECODE=1 and --import-mode=importlib
-# to avoid __pycache__ creation on Databricks workspace FS which doesn't
-# support it.
 NOTEBOOK_CONTENT = """# Databricks notebook source
-# MAGIC %pip install lifelines>=0.27.0 polars>=1.0.0 scipy>=1.11.0 numpy>=1.24.0 pytest pytest-cov
+# MAGIC %pip install lifelines>=0.27.0 polars>=1.0.0 scipy>=1.11.0 numpy>=1.24.0 pandas>=2.0 scikit-learn>=1.1 joblib>=1.2 matplotlib>=3.7.0 pytest pytest-cov
 
 # COMMAND ----------
 
-import sys, os
-sys.path.insert(0, "/Workspace/insurance-survival/src")
-sys.path.insert(0, "/Workspace/insurance-survival")
-sys.path.insert(0, "/Workspace/insurance-survival/tests")
+import sys, os, shutil
+
+# Copy all workspace files to /tmp where __pycache__ is writable
+for src_dir in ["/Workspace/insurance-survival/src", "/Workspace/insurance-survival/tests"]:
+    dst_dir = src_dir.replace("/Workspace/insurance-survival", "/tmp/insurance-survival")
+    shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
+
+shutil.copy("/Workspace/insurance-survival/pyproject.toml", "/tmp/insurance-survival/pyproject.toml")
 
 # COMMAND ----------
 
 import subprocess
 
 env = os.environ.copy()
-env["PYTHONPATH"] = "/Workspace/insurance-survival/src:/Workspace/insurance-survival:/Workspace/insurance-survival/tests"
-env["PYTHONDONTWRITEBYTECODE"] = "1"  # no __pycache__ on workspace FS
-
-# Copy source files to /tmp where __pycache__ is allowed
-import shutil
-for src_dir in ["/Workspace/insurance-survival/src", "/Workspace/insurance-survival/tests"]:
-    dst_dir = src_dir.replace("/Workspace/insurance-survival", "/tmp/insurance-survival")
-    shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
-
-# Also copy conftest to /tmp tests dir
-shutil.copy("/Workspace/insurance-survival/pyproject.toml", "/tmp/insurance-survival/pyproject.toml")
-
 env["PYTHONPATH"] = "/tmp/insurance-survival/src:/tmp/insurance-survival:/tmp/insurance-survival/tests"
+env["PYTHONDONTWRITEBYTECODE"] = "1"
 
 result = subprocess.run(
     [sys.executable, "-m", "pytest",
@@ -131,7 +140,7 @@ print(f"  Uploaded: {WORKSPACE_PATH}/run_tests")
 print("\nSubmitting test job (serverless)...")
 
 result = w.api_client.do("POST", "/api/2.2/jobs/runs/submit", body={
-    "run_name": "insurance-survival-tests",
+    "run_name": "insurance-survival-v0.2.0-tests",
     "tasks": [{
         "task_key": "run_tests",
         "notebook_task": {

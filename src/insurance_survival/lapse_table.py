@@ -172,7 +172,7 @@ class LapseTable:
 
         Returns np.ndarray of shape (len(times),).
         """
-        from .cure import WeibullMixtureCureFitter
+        from ._cure_legacy import WeibullMixtureCureFitter
 
         # Include t=0 for computing first qx
         all_times = [0.0] + list(times)

@@ -6,29 +6,70 @@
 
 Survival analysis for UK insurance pricing. Extends [lifelines](https://lifelines.readthedocs.io/) with the gaps that matter for personal lines pricing teams.
 
+v0.2.0 adds three subpackages: `cure` (mixture cure models), `competing_risks` (Fine-Gray regression), and `recurrent` (shared frailty models). All three fill confirmed Python ecosystem gaps.
+
 ## The problem
 
 lifelines is an excellent general-purpose survival library. The gaps are specific to insurance:
 
 1. **Covariate-adjusted cure models.** lifelines.MixtureCureFitter is univariate only. Insurance data has a genuine never-lapse subgroup (high-NCD, direct debit payers, long-tenure customers). You need a logistic model on the cure fraction, not a single intercept.
 
-2. **Customer lifetime value.** No Python library integrates survival probabilities with premium and loss schedules to produce per-policy CLV. This is the calculation Consumer Duty requires: can you demonstrate that a loyalty discount is CLV-justified?
+2. **Competing risks.** No pip-installable library provides Fine-Gray regression with proper IPCW weighting. For lapse modelling, death and policy cancellation are competing events — you cannot ignore them.
 
-3. **Actuarial output format.** Actuaries expect qx/px/lx tables. Pricing models produce survival curves. This library bridges them.
+3. **Recurrent events with frailty.** Pet, home, and fleet motor policyholders make multiple claims. Poisson GLMs treat each observation as independent. Frailty models capture unobserved heterogeneity and produce Bühlmann-Straub credibility scores as a by-product.
 
-4. **MLflow deployment.** lifelines has no native MLflow flavour. You cannot register a WeibullAFTFitter in the Model Registry without a pyfunc wrapper.
+4. **Customer lifetime value.** No Python library integrates survival probabilities with premium and loss schedules to produce per-policy CLV. This is the calculation Consumer Duty requires.
 
-This library handles all four. It does not replace lifelines — it calls lifelines for the standard models and adds the insurance-specific layer on top.
+5. **Actuarial output format.** Actuaries expect qx/px/lx tables. Pricing models produce survival curves. This library bridges them.
+
+6. **MLflow deployment.** lifelines has no native MLflow flavour. You cannot register a WeibullAFTFitter in the Model Registry without a pyfunc wrapper.
 
 ## What's in the box
 
-| Class | File | Does what |
-|---|---|---|
-| `ExposureTransformer` | `transform.py` | Raw policy transactions → start/stop survival format |
-| `WeibullMixtureCureFitter` | `cure.py` | Covariate-adjusted mixture cure model (logistic + Weibull AFT) |
-| `SurvivalCLV` | `clv.py` | Survival-adjusted CLV with NCD path marginalisation |
-| `LapseTable` | `lapse_table.py` | Actuarial lapse table (qx, px, lx, Tx) |
-| `LifelinesMLflowWrapper` | `mlflow_wrapper.py` | MLflow pyfunc wrapper for lifelines models |
+### Core (v0.1)
+
+| Class | Does what |
+|---|---|
+| `ExposureTransformer` | Raw policy transactions → start/stop survival format |
+| `WeibullMixtureCureFitter` | Covariate-adjusted mixture cure model (logistic + Weibull AFT, Polars-native) |
+| `SurvivalCLV` | Survival-adjusted CLV with NCD path marginalisation |
+| `LapseTable` | Actuarial lapse table (qx, px, lx, Tx) |
+| `LifelinesMLflowWrapper` | MLflow pyfunc wrapper for lifelines models |
+
+### `insurance_survival.cure` (v0.2)
+
+Full mixture cure model suite. The primary gap: no Python library provides covariate-aware MCMs with actuarial output. R has smcure, flexsurvcure, cuRe. Python has nothing pip-installable.
+
+| Class | Does what |
+|---|---|
+| `WeibullMixtureCure` | EM + Weibull AFT latency. Primary workhorse. |
+| `LogNormalMixtureCure` | EM + log-normal AFT. Better for non-monotone hazard. |
+| `CoxMixtureCure` | EM + semiparametric Cox PH. Most flexible baseline hazard. |
+| `PromotionTimeCure` | Non-mixture (Tsodikov 1998). Population-level PH structure. |
+
+### `insurance_survival.competing_risks` (v0.2)
+
+Fine-Gray subdistribution hazard regression and Aalen-Johansen CIF estimation. The only pip-installable Fine-Gray implementation with proper IPCW weighting.
+
+| Class/function | Does what |
+|---|---|
+| `FineGrayFitter` | Fine-Gray subdistribution hazard regression |
+| `AalenJohansenFitter` | Non-parametric CIF estimation |
+| `gray_test` | Gray's K-sample test for CIF equality across groups |
+| `competing_risks_brier_score` | Proper scoring rule for competing risks models |
+| `competing_risks_c_index` | Concordance index adapted for competing risks |
+
+### `insurance_survival.recurrent` (v0.2)
+
+Shared frailty models for recurrent insurance claims. Python has no shared frailty implementation (lifelines GitHub issue #878, closed as "maybe someday").
+
+| Class | Does what |
+|---|---|
+| `AndersenGillFrailty` | Andersen-Gill model with gamma or log-normal frailty |
+| `PWPModel` | Prentice-Williams-Peterson gap-time or calendar-time model |
+| `NelsonAalenFrailty` | Non-parametric baseline with parametric frailty |
+| `JointFrailtyModel` | Joint model for recurrent events and terminal event |
+| `FrailtyReport` | Model comparison and credibility score output |
 
 ## Installation
 
@@ -58,101 +99,99 @@ from insurance_survival import (
 transformer = ExposureTransformer(observation_cutoff=date(2025, 12, 31))
 survival_df = transformer.fit_transform(transactions)
 
-print(transformer.summary())
-# {'n_policies': 50000, 'event_rate': 0.31, 'median_duration': 2.4, ...}
-
 # Step 2: fit the cure model
 fitter = WeibullMixtureCureFitter(
     cure_covariates=["ncd_level", "channel_direct"],
     uncured_covariates=["ncd_level", "annual_premium_scaled"],
-    penalizer=0.01,
 )
 fitter.fit(survival_df, duration_col="stop", event_col="event")
-print(fitter.summary())
 
-# Step 3: compute CLV for each policy
+# Step 3: CLV for each policy
 clv_model = SurvivalCLV(survival_model=fitter, horizon=5, discount_rate=0.05)
-results = clv_model.predict(
-    policies,
-    premium_col="annual_premium",
-    loss_col="expected_loss",
+results = clv_model.predict(policies, premium_col="annual_premium", loss_col="expected_loss")
+```
+
+### Full mixture cure model suite
+
+```python
+from insurance_survival.cure import WeibullMixtureCure, LogNormalMixtureCure
+from insurance_survival.cure.simulate import simulate_motor_panel
+from insurance_survival.cure.diagnostics import sufficient_followup_test
+
+df = simulate_motor_panel(n_policies=5000, cure_fraction=0.40, seed=42)
+
+# Always check sufficient follow-up before trusting cure fraction estimates
+qn = sufficient_followup_test(df["tenure_months"], df["claimed"])
+print(qn.summary())
+
+model = WeibullMixtureCure(
+    incidence_formula="ncb_years + age + vehicle_age",
+    latency_formula="ncb_years + age",
+    n_em_starts=5,
 )
-# results has: policy_id, clv, survival_integral, cure_prob, s_yr1..s_yr5
+model.fit(df, duration_col="tenure_months", event_col="claimed")
 
-# Step 4: discount targeting
-sensitivity = clv_model.discount_sensitivity(
-    policies,
-    discount_amounts=[25.0, 50.0, 75.0],
-)
-# sensitivity has: discount_amount, clv_with_discount, incremental_clv, discount_justified
-
-# Step 5: actuarial lapse table
-table = LapseTable(survival_model=fitter, radix=10_000)
-df = table.generate(covariate_profile={"ncd_level": 3, "channel_direct": 1})
-print(df)
+# Primary output: per-policyholder non-claimer probability
+cure_scores = model.predict_cure_fraction(df)
 ```
 
-## The cure model
+### Competing risks
 
-The `WeibullMixtureCureFitter` estimates:
+```python
+from insurance_survival.competing_risks import FineGrayFitter, AalenJohansenFitter
 
-```
-S(t|x) = pi(x) + (1 - pi(x)) * S_u(t|x)
-```
+# Competing events: 1 = lapse at renewal, 2 = mid-term cancellation, 0 = censored
+fg = FineGrayFitter()
+fg.fit(df, duration_col="T", event_col="E", event_of_interest=1)
+print(fg.summary)
 
-where:
-
-- `pi(x) = sigmoid(gamma_0 + x_cure' gamma)` is the cure fraction (never-lapse probability)
-- `S_u(t|x) = exp(-(t/lambda(x))^rho)` is Weibull AFT for the uncured subgroup
-- `lambda(x) = exp(beta_0 + x_uncured' beta)` is the AFT scale parameter
-
-Parameters are estimated by EM initialisation followed by joint L-BFGS-B. The R equivalent is `flexsurvcure::flexsurvcure(mixture=TRUE, dist="weibull")`.
-
-The key insurance insight: censored policyholders are ambiguous — they might be genuinely cured (never-lapsers) or simply not-yet-lapsed. The EM algorithm handles this correctly by treating the cure indicator for censored observations as a latent variable.
-
-## CLV methodology
-
-`SurvivalCLV` integrates survival probabilities with a premium/loss schedule:
-
-```
-CLV(x) = sum_{t=1}^{T} S(t|x(t)) * (P_t - C_t) / (1+r)^t
+# Sub-distribution CIF at 1, 2, 3 years
+cif = fg.predict_cumulative_incidence(df_new, times=[1, 2, 3])
 ```
 
-NCD level advances year by year via a Markov chain. `x(t)` uses the expected NCD at year `t`, computed exactly from the transition matrix (no simulation). This is the right approach for a small discrete state space.
+### Recurrent events with frailty
+
+```python
+from insurance_survival.recurrent import simulate_ag_frailty, AndersenGillFrailty
+
+data = simulate_ag_frailty()
+model = AndersenGillFrailty(frailty="gamma").fit(data)
+print(model.summary())
+
+# Bühlmann-Straub credibility scores (gamma frailty posterior means)
+scores = model.credibility_scores()
+```
+
+## The credibility connection
+
+For gamma frailty, the posterior mean frailty is:
+
+```
+E[z_i | data] = (theta + n_i) / (theta + Lambda_i)
+```
+
+This is the Bühlmann-Straub credibility formula. The frailty model and classical credibility theory arrive at the same result from different directions. The frailty model gives you the correct statistical machinery; credibility theory gives you the actuarial interpretation.
 
 ## Consumer Duty and PS21/11
 
-The `predict()` output is audit-friendly: it returns `S(t)` at every year, cure probability, and expected tenure alongside the headline CLV figure. The `discount_sensitivity()` output has an explicit `discount_justified` column. Together these document that discount decisions are CLV-driven, which is the evidence Consumer Duty requires.
-
-## Use lifelines directly for standard models
-
-```python
-from lifelines import WeibullAFTFitter, CoxPHFitter, KaplanMeierFitter
-
-# These are not reimplemented here
-aft = WeibullAFTFitter().fit(survival_df, duration_col="stop", event_col="event")
-
-# But you can wrap the result in SurvivalCLV or LapseTable
-from insurance_survival import SurvivalCLV
-clv = SurvivalCLV(survival_model=aft, horizon=5)
-```
+The `SurvivalCLV.predict()` output is audit-friendly: it returns `S(t)` at every year, cure probability, and expected tenure alongside the headline CLV figure. The `discount_sensitivity()` output has an explicit `discount_justified` column. Together these document that discount decisions are CLV-driven, which is the evidence Consumer Duty requires.
 
 ## Development
+
+Tests run on Databricks (612 tests). See `notebooks/` for full workflow demos on synthetic data.
 
 ```bash
 git clone https://github.com/burning-cost/insurance-survival
 cd insurance-survival
 uv sync --extra dev
-uv run pytest tests/ -v
+python run_tests_databricks.py
 ```
-
-Tests run on Databricks. See `notebooks/insurance_survival_demo.ipynb` for a full workflow on synthetic data.
 
 ## Dependencies
 
-Required: `polars>=1.0.0`, `lifelines>=0.27.0`, `numpy>=1.24.0`, `scipy>=1.11.0`
+Required: `polars>=1.0.0`, `lifelines>=0.27.0`, `numpy>=1.24.0`, `scipy>=1.11.0`, `pandas>=2.0`, `scikit-learn>=1.1`, `matplotlib>=3.7.0`
 
-Optional: `mlflow` (Model Registry), `openpyxl` (Excel export), `matplotlib` (plots), `catboost` (claim frequency model in SurvivalCLV)
+Optional: `mlflow` (Model Registry), `openpyxl` (Excel export), `catboost` (claim frequency model in SurvivalCLV)
 
 ## Read more
 
@@ -162,9 +201,9 @@ Optional: `mlflow` (Model Registry), `openpyxl` (Excel export), `matplotlib` (pl
 
 | Library | Why it's relevant |
 |---------|------------------|
-| [insurance-demand](https://github.com/burning-cost/insurance-demand) | Demand and elasticity modelling — the commercial complement: survival gives you tenure, demand gives you price sensitivity |
-| [insurance-optimise](https://github.com/burning-cost/insurance-optimise) | Constrained portfolio rate optimisation — uses CLV and retention outputs from this library as inputs |
+| [insurance-demand](https://github.com/burning-cost/insurance-demand) | Demand and elasticity modelling — survival gives you tenure, demand gives you price sensitivity |
+| [insurance-optimise](https://github.com/burning-cost/insurance-optimise) | Constrained portfolio rate optimisation — uses CLV and retention outputs from this library |
 | [insurance-monitoring](https://github.com/burning-cost/insurance-monitoring) | Model monitoring — PSI and A/E drift tracking for deployed retention models |
-| [insurance-datasets](https://github.com/burning-cost/insurance-datasets) | Synthetic UK motor and home datasets — use to prototype the cure model before applying to real data |
+| [insurance-datasets](https://github.com/burning-cost/insurance-datasets) | Synthetic UK motor and home datasets — use to prototype before applying to real data |
 
 [All Burning Cost libraries →](https://burning-cost.github.io)
