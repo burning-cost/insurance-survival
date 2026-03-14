@@ -1061,14 +1061,20 @@ wheels = [
 
 [[package]]
 name = "insurance-survival"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
+    { name = "joblib" },
     { name = "lifelines", version = "0.30.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "lifelines", version = "0.30.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "matplotlib" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pandas" },
     { name = "polars" },
+    { name = "pyarrow" },
+    { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
@@ -1096,31 +1102,32 @@ excel = [
 mlflow = [
     { name = "mlflow" },
 ]
-plot = [
-    { name = "matplotlib" },
-]
 
 [package.metadata]
 requires-dist = [
     { name = "catboost", marker = "extra == 'all'", specifier = ">=1.2.0" },
     { name = "catboost", marker = "extra == 'catboost'", specifier = ">=1.2.0" },
     { name = "catboost", marker = "extra == 'dev'", specifier = ">=1.2.0" },
+    { name = "joblib", specifier = ">=1.2" },
     { name = "lifelines", specifier = ">=0.27.0" },
+    { name = "matplotlib", specifier = ">=3.7.0" },
     { name = "matplotlib", marker = "extra == 'all'", specifier = ">=3.7.0" },
-    { name = "matplotlib", marker = "extra == 'plot'", specifier = ">=3.7.0" },
     { name = "mlflow", marker = "extra == 'all'", specifier = ">=2.10.0" },
     { name = "mlflow", marker = "extra == 'dev'", specifier = ">=2.10.0" },
     { name = "mlflow", marker = "extra == 'mlflow'", specifier = ">=2.10.0" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "openpyxl", marker = "extra == 'all'", specifier = ">=3.1.0" },
     { name = "openpyxl", marker = "extra == 'excel'", specifier = ">=3.1.0" },
+    { name = "pandas", specifier = ">=2.0" },
     { name = "polars", specifier = ">=1.0.0" },
+    { name = "pyarrow", specifier = ">=12.0" },
     { name = "pyarrow", marker = "extra == 'dev'", specifier = ">=12.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
+    { name = "scikit-learn", specifier = ">=1.1" },
     { name = "scipy", specifier = ">=1.11.0" },
 ]
-provides-extras = ["mlflow", "excel", "catboost", "plot", "dev", "all"]
+provides-extras = ["mlflow", "excel", "catboost", "dev", "all"]
 
 [[package]]
 name = "interface-meta"
