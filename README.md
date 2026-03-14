@@ -98,62 +98,65 @@ from insurance_survival import (
     LapseTable,
 )
 
-# Synthetic UK motor policy transactions — 1,000 policies
+# Synthetic UK motor policy transaction table — 1,000 policies
+# ExposureTransformer requires: policy_id, transaction_date, transaction_type,
+# inception_date, expiry_date. Optional covariates are passed through.
 rng = np.random.default_rng(42)
 n = 1_000
 
-policy_id       = np.arange(1, n + 1)
-start_date      = [date(2022, 1, 1) + timedelta(days=int(d))
-                   for d in rng.integers(0, 365, n)]
-# Duration in days: mixture of short (lapsed) and long (retained) tenures
-tenure_days     = np.where(
-    rng.uniform(size=n) < 0.35,          # 35% lapse
-    rng.integers(30, 365, n),             # lapsed: 1 month to 1 year
-    rng.integers(365, 1460, n),           # retained: 1 to 4 years
-)
-end_date        = [start_date[i] + timedelta(days=int(tenure_days[i]))
-                   for i in range(n)]
-# Event: 1 = lapsed, 0 = censored (still active at observation cutoff)
-observation_cutoff = date(2025, 12, 31)
-event           = np.array([
-    1 if end_date[i] < observation_cutoff else 0
+inception_dates = [date(2021, 1, 1) + timedelta(days=int(d))
+                   for d in rng.integers(0, 730, n)]
+expiry_dates    = [d + timedelta(days=365) for d in inception_dates]
+
+# 35% of policies lapsed mid-year (cancellation), 65% ran to expiry
+lapsed = rng.uniform(size=n) < 0.35
+transaction_types = [
+    "cancellation" if lapsed[i] else "nonrenewal"
     for i in range(n)
-])
-ncd_level       = rng.integers(0, 9, n).astype(float)
-channel_direct  = rng.choice([0, 1], size=n).astype(float)
-annual_premium  = rng.uniform(300, 1200, n)
-annual_premium_scaled = (annual_premium - annual_premium.mean()) / annual_premium.std()
-expected_loss   = annual_premium * rng.uniform(0.4, 0.8, n)
+]
+# Cancellations happen at a random point during the policy year
+transaction_dates = [
+    inception_dates[i] + timedelta(days=int(rng.integers(30, 340)))
+    if lapsed[i] else expiry_dates[i]
+    for i in range(n)
+]
+
+ncd_level      = rng.integers(0, 9, n).astype(float)
+channel_direct = rng.choice([0, 1], size=n).astype(float)
+annual_premium = rng.uniform(300, 1200, n)
 
 transactions = pl.DataFrame({
-    "policy_id":      policy_id,
-    "start_date":     start_date,
-    "end_date":       end_date,
-    "event":          event,
-    "ncd_level":      ncd_level,
-    "channel_direct": channel_direct,
-    "annual_premium": annual_premium,
-    "annual_premium_scaled": annual_premium_scaled,
-    "expected_loss":  expected_loss,
+    "policy_id":        np.arange(1, n + 1),
+    "transaction_date": transaction_dates,
+    "transaction_type": transaction_types,
+    "inception_date":   inception_dates,
+    "expiry_date":      expiry_dates,
+    "ncd_level":        ncd_level,
+    "channel_direct":   channel_direct,
+    "annual_premium":   annual_premium,
 })
 
-policies = transactions.select([
-    "policy_id", "ncd_level", "channel_direct",
-    "annual_premium", "annual_premium_scaled", "expected_loss",
-])
-
-# Step 1: transform raw policy transactions
-transformer = ExposureTransformer(observation_cutoff=observation_cutoff)
+# Step 1: transform raw policy transactions to start/stop survival format
+transformer = ExposureTransformer(observation_cutoff=date(2025, 12, 31))
 survival_df = transformer.fit_transform(transactions)
 
-# Step 2: fit the cure model
+# Step 2: fit the cure model (covariates must appear in survival_df output)
 fitter = WeibullMixtureCureFitter(
     cure_covariates=["ncd_level", "channel_direct"],
-    uncured_covariates=["ncd_level", "annual_premium_scaled"],
+    uncured_covariates=["ncd_level"],
 )
 fitter.fit(survival_df, duration_col="stop", event_col="event")
 
 # Step 3: CLV for each policy
+# policies DataFrame needs: policy_id, annual_premium, and any CLV covariate columns
+policies = pl.DataFrame({
+    "policy_id":      np.arange(1, n + 1),
+    "annual_premium": annual_premium,
+    "expected_loss":  annual_premium * rng.uniform(0.4, 0.8, n),
+    "ncd_level":      ncd_level,
+    "channel_direct": channel_direct,
+})
+
 clv_model = SurvivalCLV(survival_model=fitter, horizon=5, discount_rate=0.05)
 results = clv_model.predict(policies, premium_col="annual_premium", loss_col="expected_loss")
 ```
@@ -185,11 +188,25 @@ cure_scores = model.predict_cure_fraction(df)
 ### Competing risks
 
 ```python
+import numpy as np
+import pandas as pd
 from insurance_survival.competing_risks import FineGrayFitter, AalenJohansenFitter
 
-# Competing events: 1 = lapse at renewal, 2 = mid-term cancellation, 0 = censored
+# Synthetic competing risks dataset: 1,000 policies
+# Event codes: 0 = censored, 1 = lapse at renewal, 2 = mid-term cancellation
+rng = np.random.default_rng(42)
+n = 1_000
+T = rng.exponential(3.0, n).clip(0.1, 10.0)  # observed time in policy years
+# Assign events: 40% censored, 35% lapse, 25% mid-term cancellation
+E = rng.choice([0, 1, 2], size=n, p=[0.40, 0.35, 0.25])
+ncd_years = rng.integers(0, 9, n).astype(float)
+age       = rng.integers(25, 70, n).astype(float)
+
+df_cr = pd.DataFrame({"T": T, "E": E, "ncd_years": ncd_years, "age": age})
+df_new = df_cr.head(50).copy()  # hold-out for prediction
+
 fg = FineGrayFitter()
-fg.fit(df, duration_col="T", event_col="E", event_of_interest=1)
+fg.fit(df_cr, duration_col="T", event_col="E", event_of_interest=1)
 print(fg.summary)
 
 # Sub-distribution CIF at 1, 2, 3 years
