@@ -270,6 +270,11 @@ No formal benchmark yet. The library fills confirmed Python ecosystem gaps (cova
 - **AndersenGillFrailty theta estimation:** On simulated data with known theta=2.0, the EM algorithm recovers theta within ±0.3 at n=500 policyholders with 3+ events each. Estimation is unreliable below 100 policyholders or when average events per subject is below 1.5.
 
 
+
+## Databricks Notebook
+
+A ready-to-run Databricks notebook benchmarking this library against standard approaches is available in [burning-cost-examples](https://github.com/burning-cost/burning-cost-examples/blob/main/notebooks/insurance_survival_demo.py).
+
 ## Related libraries
 
 | Library | Why it's relevant |
