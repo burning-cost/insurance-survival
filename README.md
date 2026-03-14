@@ -280,3 +280,12 @@ No formal benchmark yet. The library fills confirmed Python ecosystem gaps (cova
 | [insurance-datasets](https://github.com/burning-cost/insurance-datasets) | Synthetic UK motor and home datasets — use to prototype before applying to real data |
 
 [All Burning Cost libraries →](https://burning-cost.github.io)
+
+## Related Libraries
+
+| Library | What it does |
+|---------|-------------|
+| [insurance-demand](https://github.com/burning-cost/insurance-demand) | Conversion and retention modelling — survival models complement lapse probability with multi-period CLV projections |
+| [insurance-telematics](https://github.com/burning-cost/insurance-telematics) | Telematics pricing — survival models apply to telematics-based churn and usage-based policy attrition |
+| [insurance-elasticity](https://github.com/burning-cost/insurance-elasticity) | Causal price elasticity — pairs with survival models to understand price-driven lapse causally |
+
