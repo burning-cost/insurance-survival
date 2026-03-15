@@ -139,14 +139,20 @@ class AalenJohansenFitter:
             cif_vals.append(increment)
             new_cif = cif_prev + increment
 
-            # Variance via delta method (Putter et al. eq 3)
-            # Var(F_k(t)) ≈ sum_{s<=t} [dF_k(s)]^2 * (n_s - d_s) / n_s^3 * S(s-)^2
-            #              + F_k(t)^2 * sum_{s<=t} d_s / (n_s * (n_s - d_s))
-            # Using simplified Greenwood-like formula from Putter 2007
-            if n_at_risk > d_all:
-                cumulative_var += (d_all / (n_at_risk * (n_at_risk - d_all)))
-            var_cif = (new_cif ** 2) * cumulative_var if new_cif > 0 else 0.0
-            var_vals.append(var_cif)
+            # Variance via proper Aalen-Johansen delta method (Putter et al. 2007 eq 3)
+            # Var(F_k(t)) = sum_{s<=t} S(s-)^2 * [d_k(s)/n(s)^2 * (1 - d_k(s)/n(s))
+            #              + (F_k(t) - F_k(s-))^2 * d_all(s)/(n(s)*(n(s)-d_all(s)))]
+            # Separates cause-k variance from all-cause variance contribution.
+            if n_at_risk > 1:
+                # Term 1: cause-k specific variance contribution
+                cause_k_contrib = (S_prev ** 2) * (d_k / n_at_risk ** 2) * (1.0 - d_k / n_at_risk)
+                # Term 2: all-cause correction (cross term via overall survival)
+                if n_at_risk > d_all:
+                    all_cause_contrib = (S_prev ** 2) * ((new_cif - cif_prev) ** 2) * (d_all / (n_at_risk * (n_at_risk - d_all)))
+                else:
+                    all_cause_contrib = 0.0
+                cumulative_var += cause_k_contrib + all_cause_contrib
+            var_vals.append(cumulative_var)
 
             times_out.append(t)
 
@@ -168,11 +174,14 @@ class AalenJohansenFitter:
         z = _z_from_alpha(self.alpha)
 
         cif_arr = np.clip(raw_cif, 1e-10, 1.0 - 1e-10)
-        # log(-log) transform
-        log_neg_log_cif = np.log(-np.log(1.0 - cif_arr))
-        se_transformed = se / (cif_arr * (-np.log(1.0 - cif_arr)))
-        ll = 1.0 - np.exp(-np.exp(log_neg_log_cif - z * se_transformed))
-        ul = 1.0 - np.exp(-np.exp(log_neg_log_cif + z * se_transformed))
+        # log(-log(F_k)) transform: correct for CIF (not a survival function).
+        # A CIF F_k(t) approaches 1, so we use log(-log(F_k)) which maps (0,1) -> R.
+        # The back-transform is F_k = exp(-exp(theta)) — increasing in theta.
+        # SE on transformed scale: se / (F_k * |log(F_k)|)  [delta method]
+        log_neg_log_cif = np.log(-np.log(cif_arr))
+        se_transformed = se / (cif_arr * np.abs(np.log(cif_arr)))
+        ll = np.exp(-np.exp(log_neg_log_cif + z * se_transformed))
+        ul = np.exp(-np.exp(log_neg_log_cif - z * se_transformed))
 
         # At t=0 CIF is exactly 0, CI collapses
         ll[0] = 0.0

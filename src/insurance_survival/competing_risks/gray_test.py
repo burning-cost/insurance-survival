@@ -142,7 +142,8 @@ def gray_test(
     # Compute U vector of length K-1 and variance matrix V of shape (K-1, K-1)
     # Using Gray's equation (2.1): U_g(tau) = integral_0^tau W(t) dM_g(t)
     # where M_g is the counting process martingale for group g and
-    # W(t) = n_g(t) * [1 - F_k(t-)] / S(t-) (the weight function from Gray 1988)
+    # W(t) = S_hat(t) per Gray (1988) eq (2.2): the pooled KM overall survivor.
+    # This is the chi-squared(K-1) version. Note: F_vals kept for reference only.
 
     # Compute overall survival S(t) and pooled CIF F_k(t) at event times
     S_vals = _overall_survival(T, E, event_times)
@@ -163,9 +164,9 @@ def gray_test(
             if s_t <= 0:
                 continue
 
-            # Weight: w(t) = F_k(t-) * (1 - F_k(t-)) / S(t-)
-            # (Simplified but consistent with Gray 1988 equation 2.2)
-            weight = f_t * (1.0 - f_t) / max(s_t, 1e-10)
+            # Weight: w(t) = S_hat(t) per Gray (1988) eq (2.2).
+            # Using the pooled KM overall survivor gives a chi-squared(K-1) test.
+            weight = s_t
 
             # Risk set size for group g at time t
             n_g = np.sum(w_obs[(groups == g) & (T >= t)])
@@ -204,7 +205,7 @@ def gray_test(
                 if s_t <= 0:
                     continue
 
-                weight = f_t * (1.0 - f_t) / max(s_t, 1e-10)
+                weight = s_t
                 n_g = np.sum(w_obs[(groups == g) & (T >= t)])
                 n_h = np.sum(w_obs[(groups == h) & (T >= t)])
                 n_total = np.sum(w_obs[T >= t])

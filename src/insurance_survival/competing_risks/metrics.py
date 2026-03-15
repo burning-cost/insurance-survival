@@ -164,7 +164,8 @@ def integrated_brier_score(
         predicted_cif, T_test, E_test, T_train, E_train, times, event_of_interest
     )
     times = np.asarray(times, dtype=float)
-    ibs = np.trapezoid(bs.values, times) / (times[-1] - times[0])
+    trapezoid = getattr(np, "trapezoid", None) or getattr(np, "trapz", None)
+    ibs = trapezoid(bs.values, times) / (times[-1] - times[0])
     return float(ibs)
 
 

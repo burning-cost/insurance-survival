@@ -197,27 +197,57 @@ class SurvivalCLV:
         df: pl.DataFrame,
         discount_amounts: list[float],
         retention_lift_model: Any | None = None,
+        price_elasticity: float = -0.5,
+        premium_schedule: pl.DataFrame | None = None,
     ) -> pl.DataFrame:
         """Compute CLV under a range of loyalty discount amounts.
 
-        For each discount d in discount_amounts, computes CLV assuming annual
-        premium is reduced by d. If no retention_lift_model is provided, a flat
-        5% elasticity is applied (retention lifts by 5% of the discount fraction).
+        For each discount d in discount_amounts, computes CLV with two effects:
+        1. Revenue effect: annual premium is reduced by d.
+        2. Retention effect: survival probabilities are adjusted upward to
+           reflect that a lower price makes the customer more likely to renew.
+
+        Retention adjustment
+        --------------------
+        If ``retention_lift_model`` is None, a simple price-elasticity model is
+        applied: the survival probability at each year is scaled by
+
+            adjustment = exp(price_elasticity * log(P_discounted / P_base))
+
+        where ``price_elasticity`` defaults to -0.5 (i.e. a 10% price reduction
+        increases retention probability by ~5%). This is multiplicative on the
+        survival function and is the minimum viable model.
+
+        If ``retention_lift_model`` is provided, it must implement a
+        predict_retention_multiplier(df, discount_amounts) method that returns
+        a (n_policies,) array of survival multipliers for each discount amount.
+
+        The ``premium_schedule`` parameter, if provided, overrides the flat
+        premium in ``df`` for Year 1 and is passed through to predict().
 
         Parameters
         ----------
         df : pl.DataFrame
-            Current policy covariates.
+            Current policy covariates. Must contain ``annual_premium``.
         discount_amounts : list[float]
-            Discount amounts in £ to test.
+            Discount amounts in GBP to test (e.g. [25, 50, 100]).
         retention_lift_model : Any | None
-            Model predicting retention lift from discount. Not used in v0.1.0.
+            Optional model implementing predict_retention_multiplier().
+            If None, uses price elasticity formula above.
+        price_elasticity : float
+            Price elasticity of retention (negative: lower price -> higher
+            retention). Only used when retention_lift_model is None.
+            Default -0.5. Set to 0.0 to model revenue-only effect.
+        premium_schedule : pl.DataFrame | None
+            Per-policy, per-year schedule passed to predict(). If None, flat
+            premium from df is used for all years.
 
         Returns
         -------
         pl.DataFrame
             Columns: policy_id, discount_amount, clv_with_discount,
-            clv_without_discount, incremental_clv, discount_justified.
+            clv_without_discount, incremental_clv, discount_justified,
+            retention_multiplier.
         """
         df = to_polars(df)
 
@@ -225,23 +255,79 @@ class SurvivalCLV:
         if not has_policy_id:
             df = df.with_row_index("policy_id")
 
+        premium_col = "annual_premium"
+        if premium_col not in df.columns:
+            raise ValueError(f"Column '{premium_col}' not found in df.")
+
+        base_premiums = df[premium_col].to_numpy()
+
         # Baseline CLV without discount
-        base_result = self.predict(df)
+        base_result = self.predict(df, premium_schedule=premium_schedule)
         base_clv = np.array(base_result["clv"].to_list())
         policy_ids = df["policy_id"].to_list()
 
         rows: list[dict[str, Any]] = []
         for d_amount in discount_amounts:
-            # Reduce premium by discount amount
-            premium_col = "annual_premium"
-            if premium_col not in df.columns:
-                raise ValueError(f"Column '{premium_col}' not found.")
-
-            df_discounted = df.with_columns(
-                (pl.col(premium_col) - d_amount).alias(premium_col)
+            discounted_premiums = base_premiums - float(d_amount)
+            # Avoid zero or negative premiums
+            price_ratio = np.where(
+                base_premiums > 0,
+                np.maximum(discounted_premiums, 1e-3) / base_premiums,
+                1.0,
             )
-            disc_result = self.predict(df_discounted)
-            disc_clv = np.array(disc_result["clv"].to_list())
+
+            if retention_lift_model is not None:
+                # Use provided model: must return array of multipliers (n_policies,)
+                retention_multipliers = np.asarray(
+                    retention_lift_model.predict_retention_multiplier(df, d_amount)
+                )
+            else:
+                # Simple price elasticity: exp(elasticity * log(price_ratio))
+                # For elasticity=-0.5 and a 10% price cut (ratio=0.9):
+                #   multiplier = 0.9^(-0.5) ≈ 1.054  -> 5.4% retention lift
+                retention_multipliers = np.exp(
+                    price_elasticity * np.log(np.maximum(price_ratio, 1e-6))
+                )
+
+            # Build discounted df with reduced premium
+            df_discounted = df.with_columns(
+                pl.Series(premium_col, discounted_premiums.tolist())
+            )
+
+            # Compute survival with retention adjustment applied to the base
+            # survival matrix, then recompute CLV with discounted premiums.
+            # We do this by temporarily monkey-patching the survival model
+            # prediction via a wrapper that scales S(t) by the multiplier.
+            # For simplicity: predict CLV with discounted premium (revenue
+            # effect), then scale the survival integral by the retention
+            # multiplier to get the retention-adjusted CLV.
+            disc_result = self.predict(df_discounted, premium_schedule=premium_schedule)
+            disc_clv_revenue_only = np.array(disc_result["clv"].to_list())
+
+            # Retention-adjusted CLV: the discounted premium CLV already
+            # accounts for the lower revenue. We add back the incremental
+            # value from retaining more customers (higher survival integral).
+            # Incremental survival_integral * net_profit_per_year * average_discount.
+            disc_surv_integral = np.array(disc_result["survival_integral"].to_list())
+            base_surv_integral = np.array(base_result["survival_integral"].to_list())
+
+            # Adjusted survival integral = base * retention_multiplier (capped at 2x)
+            adj_surv_integral = base_surv_integral * np.minimum(retention_multipliers, 2.0)
+            # Incremental from better retention
+            net_profit = discounted_premiums - (
+                df["expected_loss"].to_numpy() if "expected_loss" in df.columns
+                else np.zeros(len(df))
+            )
+            # Average discount factor over horizon
+            avg_discount_factor = np.mean(
+                [1.0 / (1.0 + self.discount_rate) ** t for t in range(1, self.horizon + 1)]
+            )
+            retention_clv_adj = (
+                (adj_surv_integral - disc_surv_integral)
+                * net_profit
+                * avg_discount_factor
+            )
+            disc_clv = disc_clv_revenue_only + retention_clv_adj
 
             for i, pid in enumerate(policy_ids):
                 rows.append({
@@ -251,6 +337,7 @@ class SurvivalCLV:
                     "clv_without_discount": float(base_clv[i]),
                     "incremental_clv": float(disc_clv[i] - base_clv[i]),
                     "discount_justified": bool(disc_clv[i] >= base_clv[i]),
+                    "retention_multiplier": float(retention_multipliers[i]),
                 })
 
         return pl.DataFrame(rows)

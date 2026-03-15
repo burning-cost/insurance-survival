@@ -439,7 +439,7 @@ class AndersenGillFrailty:
             # -- E-step: compute expected frailty per subject --
             risk_score = np.exp(X @ beta) if p > 0 else np.ones(len(stop))
             lambda_i = self._compute_cumhaz_per_subject(
-                stop, event, risk_score, subj_idx, n_subjects
+                start, stop, event, risk_score, subj_idx, n_subjects
             )
 
             z_i = self._frailty_dist.posterior_mean(n_i, lambda_i, theta)
@@ -454,7 +454,7 @@ class AndersenGillFrailty:
             # Recompute lambda_i with updated beta
             risk_score = np.exp(X @ beta) if p > 0 else np.ones(len(stop))
             lambda_i = self._compute_cumhaz_per_subject(
-                stop, event, risk_score, subj_idx, n_subjects
+                start, stop, event, risk_score, subj_idx, n_subjects
             )
 
             theta_new = self._frailty_dist.update_theta(n_i, lambda_i, theta)
@@ -490,7 +490,7 @@ class AndersenGillFrailty:
         # Final SE computation
         risk_score = np.exp(X @ beta) if p > 0 else np.ones(len(stop))
         lambda_i = self._compute_cumhaz_per_subject(
-            stop, event, risk_score, subj_idx, n_subjects
+            start, stop, event, risk_score, subj_idx, n_subjects
         )
         z_i_final = self._frailty_dist.posterior_mean(n_i, lambda_i, theta)
         weights_per_row = z_i_final[subj_idx]
@@ -550,6 +550,7 @@ class AndersenGillFrailty:
 
     def _compute_cumhaz_per_subject(
         self,
+        start: np.ndarray,
         stop: np.ndarray,
         event: np.ndarray,
         risk_score: np.ndarray,
@@ -559,6 +560,11 @@ class AndersenGillFrailty:
         """
         Compute the cumulative baseline hazard integrated over each subject's
         follow-up: Lambda_i = sum over intervals of dLambda_0(t) * exp(X'beta).
+
+        The risk set at time t uses the counting process convention:
+        an interval [start_i, stop_i] is in the risk set at t iff
+        start_i < t <= stop_i. The original code used only stop >= t,
+        which incorrectly includes intervals that have not yet opened.
         """
         # Breslow increments at each event time
         event_mask = event == 1
@@ -567,21 +573,21 @@ class AndersenGillFrailty:
         if len(event_times) == 0:
             return np.zeros(n_subjects)
 
-        # For each event time, compute Breslow increment
+        # For each event time, compute Breslow increment using correct risk set
         dLambda = np.zeros(len(event_times))
         for k, t in enumerate(event_times):
-            at_risk = stop >= t
+            # Counting process risk set: start < t <= stop
+            at_risk = (start < t) & (stop >= t)
             d_k = float(np.sum((stop == t) & event_mask))
             r_k = float(np.sum(risk_score[at_risk]))
             if r_k > 0:
                 dLambda[k] = d_k / r_k
 
         # Per-subject cumulative hazard: sum of (risk_score * dLambda) over
-        # intervals where the interval contains each event time
+        # intervals where the interval contains each event time (start < t <= stop)
         lambda_i = np.zeros(n_subjects)
         for k, t in enumerate(event_times):
-            # Intervals that contain time t: start < t <= stop
-            in_interval = (stop >= t)
+            in_interval = (start < t) & (stop >= t)
             for j in np.where(in_interval)[0]:
                 si = subj_idx[j]
                 lambda_i[si] += risk_score[j] * dLambda[k]
@@ -842,7 +848,12 @@ class NelsonAalenFrailty:
 
             lambda_i = np.zeros(n_subjects)
             if len(event_times) > 0:
-                z_i = self._frailty_dist.posterior_mean(n_i, lambda_i + 1e-6, theta)
+                # Initialise frailty to 1.0 for all subjects (prior mean).
+                # Using lambda_i + 1e-6 as the prior expectation gave near-zero
+                # frailty weights in the first iteration, biasing the EM towards
+                # a flat hazard. Starting at z_i=1 uses the gamma(1,theta) prior
+                # mean directly and converges more reliably.
+                z_i = np.ones(n_subjects)
                 weights = z_i[subj_idx]
                 for t in event_times:
                     at_risk = stop >= t

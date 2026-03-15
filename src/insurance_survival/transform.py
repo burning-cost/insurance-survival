@@ -217,13 +217,16 @@ class ExposureTransformer:
             rows = policy_df.iter_rows(named=True)
             row_list = list(rows)
 
-            # Determine if left-truncated: if inception is before observation
-            # window but first transaction is not inception
+            # Determine if left-truncated: the policy was already in force
+            # before our observation window starts. True left-truncation means
+            # we are observing the policy mid-life -- the first transaction
+            # in our data is not an inception. The original condition also
+            # required inception_date < cutoff, which is true for every policy
+            # and therefore meaningless. Correct condition: first_txn_type
+            # is not "inception", indicating the subject entered the study
+            # after its time origin (left-truncation proper).
             first_txn_type = row_list[0]["transaction_type"]
-            is_left_truncated = (
-                first_txn_type not in ("inception",)
-                and inception_date < cutoff
-            )
+            is_left_truncated = first_txn_type not in ("inception",)
             if is_left_truncated:
                 left_trunc_count += 1
 
@@ -368,11 +371,27 @@ class ExposureTransformer:
         return intervals
 
     def _compute_exposure(self, start: float, stop: float) -> float:
-        """Compute earned or written exposure for an interval."""
+        """Compute earned or written exposure for an interval.
+
+        Written exposure: full interval duration (stop - start). Appropriate
+        for volume metrics where each policy year counts as a whole unit
+        regardless of whether the year is complete at valuation.
+
+        Earned exposure: time actually elapsed in policy-year units, which
+        equals stop - start because stop has already been capped at the
+        valuation cutoff date in _process_policy. For a partial last year
+        (e.g. a policy incepted on 1 July valued on 31 December) this
+        returns 0.5, not 1.0 -- correctly reflecting the earned fraction.
+        The difference: written assigns 1.0 to every inception year;
+        earned assigns the actual elapsed fraction.
+        """
         if self.exposure_basis == "written":
+            # Written: always the full interval as recorded.
             return stop - start
-        # Earned: the same as duration for intervals within a policy year;
-        # for multi-year intervals this is just stop - start (full years)
+        # Earned: stop has already been capped at min(expiry, cutoff) in
+        # _process_policy, so stop - start is the correct earned fraction.
+        # A partial first or last year (e.g. 0.5 for a mid-year inception)
+        # is returned as-is rather than being rounded up to a full year.
         return stop - start
 
     def _empty_schema(self, optional_cols: list[str]) -> pl.DataFrame:
