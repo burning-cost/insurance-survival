@@ -55,6 +55,8 @@ all = [
 [project.urls]
 Homepage = "https://github.com/burning-cost/insurance-survival"
 Repository = "https://github.com/burning-cost/insurance-survival"
+"Bug Tracker" = "https://github.com/burning-cost/insurance-survival/issues"
+Documentation = "https://github.com/burning-cost/insurance-survival#readme"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/insurance_survival"]
