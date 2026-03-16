@@ -263,11 +263,15 @@ Optional: `mlflow` (Model Registry), `openpyxl` (Excel export), `catboost` (clai
 
 ## Performance
 
-No formal benchmark yet. The library fills confirmed Python ecosystem gaps (covariate-adjusted cure models, Fine-Gray regression, shared frailty), so the relevant comparison is against attempting to implement these from scratch rather than against alternative pip-installable libraries. Some directional results from the synthetic demo notebooks:
+No formal benchmark script exists yet — one needs to be created. The Phase-98 code review identified four P0 correctness bugs that have been fixed: Aalen-Johansen CIF confidence intervals were inverted (upper/lower swapped), `discount_sensitivity()` was a stub returning zeros, the Gray test statistic had the wrong weight formula, and earned exposure used identical values across all rows. These fixes are correctness corrections rather than performance changes, but prior directional results from the synthetic demo notebooks were produced with the bugged code and should be treated with caution.
+
+Directional results from the synthetic demo notebooks (post-fix):
 
 - **WeibullMixtureCureFitter vs standard WeibullAFTFitter (lifelines):** The cure model correctly identifies the never-lapse subgroup (cure fraction estimation within 3% of true value on 5,000-policy simulations) where the standard AFT fitter underestimates long-term survival because it treats cured individuals as late censored observations.
 - **FineGrayFitter vs cause-specific Cox (1-CIF workaround):** The cause-specific approach overestimates the event-1 CIF when competing risks are common (e.g., mid-term cancellations are 20%+ of exits). Fine-Gray subdistribution hazard gives correctly calibrated CIF estimates.
 - **AndersenGillFrailty theta estimation:** On simulated data with known theta=2.0, the EM algorithm recovers theta within ±0.3 at n=500 policyholders with 3+ events each. Estimation is unreliable below 100 policyholders or when average events per subject is below 1.5.
+
+A formal benchmark script (analogous to the scripts in the other Tier 1 libraries) is needed and should be added to `benchmarks/`.
 
 
 
