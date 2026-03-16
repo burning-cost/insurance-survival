@@ -71,9 +71,9 @@ OBSERVATION_CUTOFF = date(2025, 12, 31)
 
 # Policy attributes
 policy_ids = [f"POL{i:06d}" for i in range(N_POLICIES)]
-ncd_levels = rng.integers(0, 6, N_POLICIES)  # 0-5
+ncd_yearss = rng.integers(0, 6, N_POLICIES)  # 0-5
 channels = rng.choice(["direct", "PCW"], N_POLICIES, p=[0.45, 0.55])
-annual_premiums = (250 + 50 * (5 - ncd_levels) + rng.normal(0, 30, N_POLICIES)).clip(150, 600)
+annual_premiums = (250 + 50 * (5 - ncd_yearss) + rng.normal(0, 30, N_POLICIES)).clip(150, 600)
 policyholder_ages = rng.integers(22, 72, N_POLICIES)
 
 # Inception dates spread across 2020-2021
@@ -81,15 +81,15 @@ days_since_start = rng.integers(0, 730, N_POLICIES)
 inception_dates = [STUDY_START + timedelta(days=int(d)) for d in days_since_start]
 
 # Cure probability: high-NCD direct customers most likely to be cured
-# pi(x) = sigmoid(-1.5 + 0.4 * ncd_level + 0.8 * is_direct)
+# pi(x) = sigmoid(-1.5 + 0.4 * ncd_years + 0.8 * is_direct)
 is_direct = (np.array(channels) == "direct").astype(float)
-cure_logit = -1.5 + 0.4 * ncd_levels + 0.8 * is_direct
+cure_logit = -1.5 + 0.4 * ncd_yearss + 0.8 * is_direct
 cure_prob = 1 / (1 + np.exp(-cure_logit))
 is_cured = rng.binomial(1, cure_prob).astype(bool)
 
 # Time-to-lapse for uncured: Weibull with scale driven by premium and NCD
 # Higher premium and lower NCD = shorter tenure before lapse
-log_lambda = 1.0 - 0.08 * ncd_levels + 0.002 * annual_premiums
+log_lambda = 1.0 - 0.08 * ncd_yearss + 0.002 * annual_premiums
 scale = np.exp(log_lambda)
 shape = 1.5  # Weibull shape (accelerating hazard: renewal cliff)
 
@@ -115,7 +115,7 @@ for i in range(N_POLICIES):
         "transaction_type": "inception",
         "inception_date": inc_date,
         "expiry_date": exp_date,
-        "ncd_level": int(ncd_levels[i]),
+        "ncd_years": int(ncd_yearss[i]),
         "annual_premium": float(annual_premiums[i]),
         "channel": channels[i],
         "policyholder_age": int(policyholder_ages[i]),
@@ -132,7 +132,7 @@ for i in range(N_POLICIES):
             "transaction_type": "renewal",
             "inception_date": inc_date,
             "expiry_date": next_expiry,
-            "ncd_level": min(int(ncd_levels[i]) + 1, 5),
+            "ncd_years": min(int(ncd_yearss[i]) + 1, 5),
             "annual_premium": float(annual_premiums[i] * rng.uniform(0.95, 1.05)),
             "channel": channels[i],
             "policyholder_age": int(policyholder_ages[i]),
@@ -151,7 +151,7 @@ for i in range(N_POLICIES):
                 "transaction_type": "nonrenewal",
                 "inception_date": inc_date,
                 "expiry_date": expiry_at_lapse,
-                "ncd_level": int(ncd_levels[i]),
+                "ncd_years": int(ncd_yearss[i]),
                 "annual_premium": float(annual_premiums[i]),
                 "channel": channels[i],
                 "policyholder_age": int(policyholder_ages[i]),
@@ -212,8 +212,8 @@ display(survival_df.head(8))
 # COMMAND ----------
 
 fitter = WeibullMixtureCureFitter(
-    cure_covariates=["ncd_level", "channel_direct"],
-    uncured_covariates=["ncd_level", "annual_premium"],
+    cure_covariates=["ncd_years", "channel_direct"],
+    uncured_covariates=["ncd_years", "annual_premium"],
     penalizer=0.01,
     fit_intercept=True,
 )
@@ -258,7 +258,7 @@ display(fitter.uncured_params_)
 
 # Predict cure probability for distinct customer segments
 segments = pl.DataFrame({
-    "ncd_level": [0, 0, 3, 3, 5, 5],
+    "ncd_years": [0, 0, 3, 3, 5, 5],
     "channel_direct": [0, 1, 0, 1, 0, 1],
     "annual_premium": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],  # at mean
     "stop": [1.0] * 6,
@@ -269,7 +269,7 @@ cure_probs = fitter.predict_cure(segments)
 
 print("Cure probabilities by segment:")
 for i, row in enumerate(segments.iter_rows(named=True)):
-    ncd = row["ncd_level"]
+    ncd = row["ncd_years"]
     chan = "direct" if row["channel_direct"] == 1 else "PCW"
     print(f"  NCD={ncd}, {chan}: cure={cure_probs[i]:.3f} ({cure_probs[i]*100:.1f}% never lapse)")
 
@@ -287,11 +287,11 @@ for i, row in enumerate(segments.iter_rows(named=True)):
 
 # Predict survival at years 1-5 for two reference profiles
 profile_pcw_ncd0 = pl.DataFrame({
-    "ncd_level": [0], "channel_direct": [0], "annual_premium": [0.0],
+    "ncd_years": [0], "channel_direct": [0], "annual_premium": [0.0],
     "stop": [1.0], "event": [0],
 })
 profile_direct_ncd5 = pl.DataFrame({
-    "ncd_level": [5], "channel_direct": [1], "annual_premium": [0.0],
+    "ncd_years": [5], "channel_direct": [1], "annual_premium": [0.0],
     "stop": [1.0], "event": [0],
 })
 
@@ -322,7 +322,7 @@ for t, s1, s2 in zip(times, surv_pcw_low[0], surv_direct_high[0]):
 # Build a small policy profile for CLV prediction
 policies_for_clv = pl.DataFrame({
     "policy_id": ["P001", "P002", "P003", "P004"],
-    "ncd_level": [0, 3, 5, 5],
+    "ncd_years": [0, 3, 5, 5],
     "channel_direct": [0, 0, 0, 1],
     "annual_premium": [0.0, 0.0, 0.0, 0.0],   # at mean
     "stop": [1.0, 1.0, 1.0, 1.0],
@@ -383,7 +383,7 @@ print("\nKey column: discount_justified = True if CLV(with discount) > CLV(witho
 table = LapseTable(survival_model=fitter, radix=10_000, time_points=[1, 2, 3, 4, 5, 6, 7])
 
 # Generate for a reference customer: PCW, NCD=3
-profile = {"ncd_level": 3, "channel_direct": 0, "annual_premium": 0.0}
+profile = {"ncd_years": 3, "channel_direct": 0, "annual_premium": 0.0}
 lapse_table_df = table.generate(covariate_profile=profile)
 
 print("Actuarial lapse table (PCW, NCD=3):")
@@ -393,8 +393,8 @@ display(lapse_table_df)
 # COMMAND ----------
 
 # Compare direct vs PCW for the same NCD level
-table_direct = table.generate(covariate_profile={"ncd_level": 3, "channel_direct": 1, "annual_premium": 0.0})
-table_pcw = table.generate(covariate_profile={"ncd_level": 3, "channel_direct": 0, "annual_premium": 0.0})
+table_direct = table.generate(covariate_profile={"ncd_years": 3, "channel_direct": 1, "annual_premium": 0.0})
+table_pcw = table.generate(covariate_profile={"ncd_years": 3, "channel_direct": 0, "annual_premium": 0.0})
 
 print(f"{'Year':>6} {'qx (Direct)':>13} {'qx (PCW)':>10} {'Diff':>8}")
 print("-" * 42)

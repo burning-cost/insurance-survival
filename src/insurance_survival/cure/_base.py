@@ -117,14 +117,14 @@ class MCMResult:
 def _parse_formula(formula: str, df: pd.DataFrame) -> tuple[np.ndarray, list[str]]:
     """Parse a Patsy-style formula (right-hand side only) into a design matrix.
 
-    Supports additive formulas: ``"age + ncb_years + vehicle_age"``.
+    Supports additive formulas: ``"age + ncd_years + vehicle_age"``.
     Does not support interaction terms or transformations.
     Each named column is extracted from df and standardised to float.
 
     Parameters
     ----------
     formula : str
-        Right-hand side formula string, e.g. ``"age + ncb_years"``.
+        Right-hand side formula string, e.g. ``"age + ncd_years"``.
     df : DataFrame
         Data frame containing the named columns.
 
@@ -167,10 +167,10 @@ class BaseMixtureCure(ABC):
     ----------
     incidence_formula : str
         Right-hand side formula for the incidence sub-model.
-        Example: ``"ncb_years + age_band + vehicle_age"``.
+        Example: ``"ncd_years + age_band + vehicle_age"``.
     latency_formula : str
         Right-hand side formula for the latency sub-model.
-        Example: ``"ncb_years + age_band"``.
+        Example: ``"ncd_years + age_band"``.
     n_em_starts : int
         Number of random EM restarts. The run with the highest
         log-likelihood is returned. Minimum 1.

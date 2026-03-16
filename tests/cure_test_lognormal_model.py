@@ -10,8 +10,8 @@ from insurance_survival.cure import LogNormalMixtureCure
 class TestLogNormalMixtureCureFit:
     def test_fit_returns_self(self, motor_df):
         m = LogNormalMixtureCure(
-            incidence_formula="ncb_years + age",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years + age",
+            latency_formula="ncd_years",
             n_em_starts=1,
             max_iter=20,
             random_state=1,

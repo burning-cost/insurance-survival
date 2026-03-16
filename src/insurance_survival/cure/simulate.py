@@ -36,11 +36,11 @@ def simulate_motor_panel(
     Observations are censored at policy cancellation or end of window.
 
     Covariates generated:
-    - ``ncb_years``: No-claims bonus years [0, 9]. Higher NCB => more likely immune.
+    - ``ncd_years``: No-claims bonus years [0, 9]. Higher NCB => more likely immune.
     - ``age``: Driver age [18, 80]. Younger/older => more likely susceptible.
     - ``vehicle_age``: Vehicle age in years [0, 15]. Older => slightly more susceptible.
 
-    The true cure fraction is modulated by ncb_years so that higher-NCB
+    The true cure fraction is modulated by ncd_years so that higher-NCB
     policyholders have higher P(immune), making the incidence sub-model
     identifiable.
 
@@ -66,7 +66,7 @@ def simulate_motor_panel(
     -------
     DataFrame with columns:
         - policy_id : int
-        - ncb_years : int [0, 9]
+        - ncd_years : int [0, 9]
         - age : int [18, 80]
         - vehicle_age : int [0, 15]
         - is_immune : bool — true latent status (not known in practice)
@@ -77,7 +77,7 @@ def simulate_motor_panel(
     rng = np.random.default_rng(seed)
 
     # Generate covariates
-    ncb_years = rng.integers(0, 10, size=n_policies)
+    ncd_years = rng.integers(0, 10, size=n_policies)
     age = rng.integers(18, 81, size=n_policies)
     vehicle_age = rng.integers(0, 16, size=n_policies)
 
@@ -92,7 +92,7 @@ def simulate_motor_panel(
     from scipy.optimize import brentq
 
     linear = (
-        gamma_ncb * ncb_years
+        gamma_ncb * ncd_years
         + gamma_age * (age - 40)
         + gamma_vehicle * vehicle_age
     )
@@ -113,9 +113,9 @@ def simulate_motor_panel(
     is_immune = rng.random(size=n_policies) > pi_true
 
     # Generate time-to-claim for susceptibles (months)
-    # Scale modulated slightly by ncb_years: higher NCB => slightly longer latency
+    # Scale modulated slightly by ncd_years: higher NCB => slightly longer latency
     # (experienced drivers may drive more carefully, delaying any eventual claim)
-    scale_i = weibull_scale * np.exp(0.05 * ncb_years)
+    scale_i = weibull_scale * np.exp(0.05 * ncd_years)
     u = rng.random(size=n_policies)
     # Weibull quantile: t = scale * (-log(u))^(1/shape)
     time_to_claim = scale_i * (-np.log(np.clip(u, 1e-10, 1.0))) ** (1.0 / weibull_shape)
@@ -150,7 +150,7 @@ def simulate_motor_panel(
 
         rows.append({
             "policy_id": i,
-            "ncb_years": int(ncb_years[i]),
+            "ncd_years": int(ncd_years[i]),
             "age": int(age[i]),
             "vehicle_age": int(vehicle_age[i]),
             "is_immune": bool(is_immune[i]),

@@ -9,7 +9,7 @@ from insurance_survival.cure import PromotionTimeCure
 
 class TestPromotionTimeCureFit:
     def test_fit_returns_self(self, motor_df):
-        m = PromotionTimeCure(formula="ncb_years + age", random_state=0)
+        m = PromotionTimeCure(formula="ncd_years + age", random_state=0)
         result = m.fit(motor_df, duration_col="tenure_months", event_col="claimed")
         assert result is m
 
@@ -39,12 +39,12 @@ class TestPromotionTimeCureFit:
     def test_bad_duration_raises(self, motor_df):
         df_bad = motor_df.copy()
         df_bad["tenure_months"] = -1.0
-        m = PromotionTimeCure(formula="ncb_years")
+        m = PromotionTimeCure(formula="ncd_years")
         with pytest.raises(ValueError, match="non-positive"):
             m.fit(df_bad, duration_col="tenure_months", event_col="claimed")
 
     def test_repr_unfitted(self):
-        m = PromotionTimeCure(formula="ncb_years")
+        m = PromotionTimeCure(formula="ncd_years")
         r = repr(m)
         assert "unfitted" in r
 
@@ -90,6 +90,6 @@ class TestPromotionTimePrediction:
         assert (result[24] >= result[60]).all()
 
     def test_predict_before_fit_raises(self, motor_df):
-        m = PromotionTimeCure(formula="ncb_years")
+        m = PromotionTimeCure(formula="ncd_years")
         with pytest.raises(RuntimeError, match="not been fitted"):
             m.predict_cure_fraction(motor_df)

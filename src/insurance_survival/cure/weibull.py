@@ -41,7 +41,7 @@ class WeibullMixtureCure(BaseMixtureCure):
     ----------
     incidence_formula : str
         Additive formula for incidence covariates, e.g.
-        ``"ncb_years + age_band + vehicle_age"``.
+        ``"ncd_years + age_band + vehicle_age"``.
     latency_formula : str
         Additive formula for latency covariates.
     n_em_starts : int
@@ -69,8 +69,8 @@ class WeibullMixtureCure(BaseMixtureCure):
     --------
     >>> from insurance_cure import WeibullMixtureCure
     >>> model = WeibullMixtureCure(
-    ...     incidence_formula="ncb_years + age_band",
-    ...     latency_formula="ncb_years",
+    ...     incidence_formula="ncd_years + age_band",
+    ...     latency_formula="ncd_years",
     ...     n_em_starts=3,
     ... )
     >>> model.fit(df, duration_col="tenure_months", event_col="claimed")

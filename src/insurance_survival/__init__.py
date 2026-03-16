@@ -54,8 +54,8 @@ Quick start::
 
     # Step 2: fit cure model
     fitter = WeibullMixtureCureFitter(
-        cure_covariates=["ncd_level"],
-        uncured_covariates=["ncd_level", "annual_premium"],
+        cure_covariates=["ncd_years"],
+        uncured_covariates=["ncd_years", "annual_premium"],
     )
     fitter.fit(survival_df)
 
@@ -71,8 +71,8 @@ For mixture cure models (full suite)::
 
     df = simulate_motor_panel(n_policies=3000, cure_fraction=0.40, seed=42)
     model = WeibullMixtureCure(
-        incidence_formula="ncb_years + age + vehicle_age",
-        latency_formula="ncb_years + age",
+        incidence_formula="ncd_years + age + vehicle_age",
+        latency_formula="ncd_years + age",
     )
     model.fit(df, duration_col="tenure_months", event_col="claimed")
     cure_scores = model.predict_cure_fraction(df)

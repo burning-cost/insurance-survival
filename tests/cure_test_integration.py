@@ -33,8 +33,8 @@ class TestFullWorkflow:
 
         # Step 2: fit
         model = WeibullMixtureCure(
-            incidence_formula="ncb_years + age + vehicle_age",
-            latency_formula="ncb_years + age",
+            incidence_formula="ncd_years + age + vehicle_age",
+            latency_formula="ncd_years + age",
             n_em_starts=2,
             max_iter=30,
             random_state=42,
@@ -64,8 +64,8 @@ class TestFullWorkflow:
         df = simulate_motor_panel(n_policies=400, cure_fraction=0.35, seed=200)
 
         model = LogNormalMixtureCure(
-            incidence_formula="ncb_years + age",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years + age",
+            latency_formula="ncd_years",
             n_em_starts=2,
             max_iter=30,
             random_state=42,
@@ -78,7 +78,7 @@ class TestFullWorkflow:
         df = simulate_motor_panel(n_policies=400, cure_fraction=0.40, seed=300)
 
         model = PromotionTimeCure(
-            formula="ncb_years + age + vehicle_age",
+            formula="ncd_years + age + vehicle_age",
             random_state=42,
         )
         model.fit(df, duration_col="tenure_months", event_col="claimed")
@@ -95,8 +95,8 @@ class TestCureFractionRecovery:
         df = simulate_motor_panel(n_policies=2000, cure_fraction=true_cf, seed=999)
 
         model = WeibullMixtureCure(
-            incidence_formula="ncb_years + age + vehicle_age",
-            latency_formula="ncb_years + age",
+            incidence_formula="ncd_years + age + vehicle_age",
+            latency_formula="ncd_years + age",
             n_em_starts=3,
             max_iter=100,
             random_state=42,
@@ -115,8 +115,8 @@ class TestCureFractionRecovery:
         df = simulate_motor_panel(n_policies=1500, cure_fraction=0.40, seed=77)
 
         model = WeibullMixtureCure(
-            incidence_formula="ncb_years + age",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years + age",
+            latency_formula="ncd_years",
             n_em_starts=2,
             max_iter=60,
             random_state=42,
@@ -124,8 +124,8 @@ class TestCureFractionRecovery:
         model.fit(df, duration_col="tenure_months", event_col="claimed")
         cure = model.predict_cure_fraction(df)
 
-        low_ncb_cure = cure[df["ncb_years"] <= 1].mean()
-        high_ncb_cure = cure[df["ncb_years"] >= 8].mean()
+        low_ncb_cure = cure[df["ncd_years"] <= 1].mean()
+        high_ncb_cure = cure[df["ncd_years"] >= 8].mean()
         assert high_ncb_cure > low_ncb_cure
 
 
@@ -136,8 +136,8 @@ class TestModelComparison:
         df = simulate_motor_panel(n_policies=400, cure_fraction=0.38, seed=55)
 
         weibull = WeibullMixtureCure(
-            incidence_formula="ncb_years + age",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years + age",
+            latency_formula="ncd_years",
             n_em_starts=1,
             max_iter=30,
             random_state=0,
@@ -145,8 +145,8 @@ class TestModelComparison:
         weibull.fit(df, duration_col="tenure_months", event_col="claimed")
 
         lognormal = LogNormalMixtureCure(
-            incidence_formula="ncb_years + age",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years + age",
+            latency_formula="ncd_years",
             n_em_starts=1,
             max_iter=30,
             random_state=0,
@@ -169,8 +169,8 @@ class TestEdgeCases:
     def test_single_covariate(self):
         df = simulate_motor_panel(n_policies=200, seed=1)
         model = WeibullMixtureCure(
-            incidence_formula="ncb_years",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years",
+            latency_formula="ncd_years",
             n_em_starts=1,
             max_iter=20,
             random_state=1,
@@ -181,8 +181,8 @@ class TestEdgeCases:
     def test_different_incidence_latency_formulas(self):
         df = simulate_motor_panel(n_policies=300, seed=2)
         model = WeibullMixtureCure(
-            incidence_formula="ncb_years + age + vehicle_age",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years + age + vehicle_age",
+            latency_formula="ncd_years",
             n_em_starts=1,
             max_iter=20,
             random_state=2,
@@ -190,7 +190,7 @@ class TestEdgeCases:
         model.fit(df, duration_col="tenure_months", event_col="claimed")
         # Incidence has 3 covariates, latency has 1
         assert len(model.result_.incidence_coef) == 3
-        assert "beta_ncb_years" in model.result_.latency_params
+        assert "beta_ncd_years" in model.result_.latency_params
 
     def test_predict_on_subset(self, motor_df, fitted_weibull):
         """Predict on a subset of the original data."""

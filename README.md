@@ -121,7 +121,7 @@ transaction_dates = [
     for i in range(n)
 ]
 
-ncd_level      = rng.integers(0, 9, n).astype(float)
+ncd_years      = rng.integers(0, 9, n).astype(float)
 channel_direct = rng.choice([0, 1], size=n).astype(float)
 annual_premium = rng.uniform(300, 1200, n)
 
@@ -131,7 +131,7 @@ transactions = pl.DataFrame({
     "transaction_type": transaction_types,
     "inception_date":   inception_dates,
     "expiry_date":      expiry_dates,
-    "ncd_level":        ncd_level,
+    "ncd_years":        ncd_years,
     "channel_direct":   channel_direct,
     "annual_premium":   annual_premium,
 })
@@ -142,8 +142,8 @@ survival_df = transformer.fit_transform(transactions)
 
 # Step 2: fit the cure model (covariates must appear in survival_df output)
 fitter = WeibullMixtureCureFitter(
-    cure_covariates=["ncd_level", "channel_direct"],
-    uncured_covariates=["ncd_level"],
+    cure_covariates=["ncd_years", "channel_direct"],
+    uncured_covariates=["ncd_years"],
 )
 fitter.fit(survival_df, duration_col="stop", event_col="event")
 
@@ -153,7 +153,7 @@ policies = pl.DataFrame({
     "policy_id":      np.arange(1, n + 1),
     "annual_premium": annual_premium,
     "expected_loss":  annual_premium * rng.uniform(0.4, 0.8, n),
-    "ncd_level":      ncd_level,
+    "ncd_years":      ncd_years,
     "channel_direct": channel_direct,
 })
 
@@ -175,8 +175,8 @@ qn = sufficient_followup_test(df["tenure_months"], df["claimed"])
 print(qn.summary())
 
 model = WeibullMixtureCure(
-    incidence_formula="ncb_years + age + vehicle_age",
-    latency_formula="ncb_years + age",
+    incidence_formula="ncd_years + age + vehicle_age",
+    latency_formula="ncd_years + age",
     n_em_starts=5,
 )
 model.fit(df, duration_col="tenure_months", event_col="claimed")
@@ -238,7 +238,7 @@ This is the Bühlmann-Straub credibility formula. The frailty model and classica
 
 ## Consumer Duty and PS21/11
 
-The `SurvivalCLV.predict()` output is audit-friendly: it returns `S(t)` at every year, cure probability, and expected tenure alongside the headline CLV figure. The `discount_sensitivity()` output has an explicit `discount_justified` column. Together these document that discount decisions are CLV-driven, which is the evidence Consumer Duty requires.
+The `SurvivalCLV.predict()` output supports CLV analysis that can form part of a fair value assessment under Consumer Duty. It returns `S(t)` at every year, cure probability, and expected tenure alongside the headline CLV figure. The `discount_sensitivity()` output has an explicit `discount_justified` column. Insurers remain responsible for the full regulatory documentation required under PRIN 12 and GIPP.
 
 ## Development
 
@@ -274,7 +274,9 @@ Run `benchmarks/benchmark.py` to reproduce these results. The benchmark uses 50,
 | Cox PH | 0.874 | 0.746 | 0.644 | 0.562 | 0.504 | 0.047 |
 | WeibullMixtureCure | 0.878 | 0.751 | 0.645 | 0.562 | 0.499 | 0.047 |
 
-### CLV estimation (£600/yr premium, 5% discount rate, 5yr horizon)
+### CLV estimation — within-window comparison (5 years) (£600/yr premium, 5% discount rate)
+
+**Note:** This table compares models within the 5-year observation window only. The cure model's advantage is in extrapolation beyond the observation window — see Honest interpretation below.
 
 | Method | CLV (£) | Bias vs true | Bias % |
 |---|---|---|---|
@@ -285,7 +287,7 @@ Run `benchmarks/benchmark.py` to reproduce these results. The benchmark uses 50,
 
 ### Cure fraction recovery
 
-The EM algorithm recovers the cure fraction to within 0.9pp: estimated 34.1% vs true 35.0%. Incidence coefficients have the right signs: NCB years is negative (−0.31), meaning more NCB experience reduces susceptibility to lapse — the correct actuarial direction.
+The EM algorithm recovers the cure fraction to within 0.9pp: estimated 34.1% vs true 35.0%. Incidence coefficients have the right signs: NCD years is negative (−0.31), meaning more NCB experience reduces susceptibility to lapse — the correct actuarial direction.
 
 ### Honest interpretation
 
@@ -329,12 +331,4 @@ A ready-to-run Databricks notebook benchmarking this library against standard ap
 | [insurance-datasets](https://github.com/burning-cost/insurance-datasets) | Synthetic UK motor and home datasets — use to prototype before applying to real data |
 
 [All Burning Cost libraries →](https://burning-cost.github.io)
-
-## Related Libraries
-
-| Library | What it does |
-|---------|-------------|
-| [insurance-demand](https://github.com/burning-cost/insurance-demand) | Conversion and retention modelling — survival models complement lapse probability with multi-period CLV projections |
-| [insurance-telematics](https://github.com/burning-cost/insurance-telematics) | Telematics pricing — survival models apply to telematics-based churn and usage-based policy attrition |
-| [insurance-elasticity](https://github.com/burning-cost/insurance-elasticity) | Causal price elasticity — pairs with survival models to understand price-driven lapse causally |
 

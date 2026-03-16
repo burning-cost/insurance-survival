@@ -147,7 +147,7 @@ class SurvivalCLV:
         premiums = df[premium_col].to_numpy()
         losses = df[loss_col].to_numpy() if loss_col in df.columns else np.zeros(len(df))
 
-        ncd_col = "ncd_level" if "ncd_level" in df.columns else None
+        ncd_col = "ncd_years" if "ncd_years" in df.columns else None
 
         # Survival probabilities per year for each policy
         surv_matrix = self._compute_survival_path(df, ncd_col)
@@ -437,10 +437,10 @@ class SurvivalCLV:
         horizon = len(times)
         surv_matrix = np.zeros((n, horizon))
 
-        ncd_levels = df[ncd_col].to_numpy()
+        ncd_yearss = df[ncd_col].to_numpy()
 
         for i in range(n):
-            ncd_0 = int(ncd_levels[i]) if not np.isnan(ncd_levels[i]) else 0
+            ncd_0 = int(ncd_yearss[i]) if not np.isnan(ncd_yearss[i]) else 0
             ncd_0 = max(0, min(ncd_0, self._max_ncd))
 
             # Expected NCD at each future year

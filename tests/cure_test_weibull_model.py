@@ -11,8 +11,8 @@ from insurance_survival.cure._base import MCMResult
 class TestWeibullMixtureCureInit:
     def test_default_params(self):
         m = WeibullMixtureCure(
-            incidence_formula="ncb_years",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years",
+            latency_formula="ncd_years",
         )
         assert m.n_em_starts == 5
         assert m.max_iter == 200
@@ -21,8 +21,8 @@ class TestWeibullMixtureCureInit:
 
     def test_repr_unfitted(self):
         m = WeibullMixtureCure(
-            incidence_formula="ncb_years",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years",
+            latency_formula="ncd_years",
         )
         r = repr(m)
         assert "unfitted" in r
@@ -40,8 +40,8 @@ class TestWeibullMixtureCureInit:
 class TestWeibullMixtureCureFit:
     def test_fit_returns_self(self, motor_df):
         m = WeibullMixtureCure(
-            incidence_formula="ncb_years + age",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years + age",
+            latency_formula="ncd_years",
             n_em_starts=1,
             max_iter=20,
             random_state=1,
@@ -71,7 +71,7 @@ class TestWeibullMixtureCureFit:
 
     def test_incidence_coef_keys(self, fitted_weibull):
         coef = fitted_weibull.result_.incidence_coef
-        assert "ncb_years" in coef
+        assert "ncd_years" in coef
         assert "age" in coef
         assert "vehicle_age" in coef
 
@@ -93,8 +93,8 @@ class TestWeibullMixtureCureFit:
         df_bad = motor_df.copy()
         df_bad["tenure_months"] = df_bad["tenure_months"] * -1
         m = WeibullMixtureCure(
-            incidence_formula="ncb_years",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years",
+            latency_formula="ncd_years",
             n_em_starts=1,
             max_iter=5,
         )
@@ -105,8 +105,8 @@ class TestWeibullMixtureCureFit:
         df_bad = motor_df.copy()
         df_bad["claimed"] = 2
         m = WeibullMixtureCure(
-            incidence_formula="ncb_years",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years",
+            latency_formula="ncd_years",
             n_em_starts=1,
             max_iter=5,
         )
@@ -115,8 +115,8 @@ class TestWeibullMixtureCureFit:
 
     def test_missing_column_raises(self, motor_df):
         m = WeibullMixtureCure(
-            incidence_formula="ncb_years + nonexistent_col",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years + nonexistent_col",
+            latency_formula="ncd_years",
             n_em_starts=1,
             max_iter=5,
         )
@@ -181,8 +181,8 @@ class TestWeibullPrediction:
 
     def test_predict_before_fit_raises(self, motor_df):
         m = WeibullMixtureCure(
-            incidence_formula="ncb_years",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years",
+            latency_formula="ncd_years",
         )
         with pytest.raises(RuntimeError, match="not been fitted"):
             m.predict_cure_fraction(motor_df)
@@ -192,16 +192,16 @@ class TestWeibullPrediction:
         from insurance_survival.cure.simulate import simulate_motor_panel
         df = simulate_motor_panel(n_policies=200, seed=99)
         cure = fitted_weibull.predict_cure_fraction(df)
-        low = cure[df["ncb_years"] <= 1].mean()
-        high = cure[df["ncb_years"] >= 8].mean()
+        low = cure[df["ncd_years"] <= 1].mean()
+        high = cure[df["ncd_years"] >= 8].mean()
         assert high > low
 
 
 class TestWeibullBootstrap:
     def test_bootstrap_se_populated(self, motor_df):
         m = WeibullMixtureCure(
-            incidence_formula="ncb_years + age",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years + age",
+            latency_formula="ncd_years",
             n_em_starts=1,
             max_iter=20,
             bootstrap_se=True,
@@ -211,12 +211,12 @@ class TestWeibullBootstrap:
         )
         m.fit(motor_df, duration_col="tenure_months", event_col="claimed")
         assert m.result_.se_incidence_coef is not None
-        assert "ncb_years" in m.result_.se_incidence_coef
+        assert "ncd_years" in m.result_.se_incidence_coef
 
     def test_bootstrap_se_nonnegative(self, motor_df):
         m = WeibullMixtureCure(
-            incidence_formula="ncb_years",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years",
+            latency_formula="ncd_years",
             n_em_starts=1,
             max_iter=20,
             bootstrap_se=True,

@@ -65,8 +65,8 @@ class LogNormalMixtureCure(BaseMixtureCure):
     --------
     >>> from insurance_cure import LogNormalMixtureCure
     >>> model = LogNormalMixtureCure(
-    ...     incidence_formula="ncb_years + age_band",
-    ...     latency_formula="ncb_years",
+    ...     incidence_formula="ncd_years + age_band",
+    ...     latency_formula="ncd_years",
     ...     n_em_starts=3,
     ... )
     >>> model.fit(df, duration_col="tenure_months", event_col="claimed")

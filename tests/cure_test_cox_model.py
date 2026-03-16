@@ -21,8 +21,8 @@ def small_motor_df():
 @pytest.fixture(scope="module")
 def fitted_cox(small_motor_df):
     m = CoxMixtureCure(
-        incidence_formula="ncb_years + age",
-        latency_formula="ncb_years",
+        incidence_formula="ncd_years + age",
+        latency_formula="ncd_years",
         n_em_starts=1,
         max_iter=5,
         random_state=42,
@@ -34,8 +34,8 @@ def fitted_cox(small_motor_df):
 class TestCoxMixtureCureFit:
     def test_fit_returns_self(self, small_motor_df):
         m = CoxMixtureCure(
-            incidence_formula="ncb_years",
-            latency_formula="ncb_years",
+            incidence_formula="ncd_years",
+            latency_formula="ncd_years",
             n_em_starts=1,
             max_iter=3,
             random_state=1,
@@ -55,7 +55,7 @@ class TestCoxMixtureCureFit:
 
     def test_incidence_coef_keys(self, fitted_cox):
         coef = fitted_cox.result_.incidence_coef
-        assert "ncb_years" in coef
+        assert "ncd_years" in coef
         assert "age" in coef
 
 

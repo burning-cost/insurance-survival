@@ -45,7 +45,7 @@ class LapseTable:
     >>> from insurance_survival import LapseTable
     >>>
     >>> table = LapseTable(survival_model=aft, radix=10_000)
-    >>> df = table.generate(covariate_profile={"ncd_level": 3, "channel": "direct"})
+    >>> df = table.generate(covariate_profile={"ncd_years": 3, "channel": "direct"})
     >>> print(df)
     shape: (7, 6)
     ┌──────┬───────┬──────┬───────┬───────┬───────┐

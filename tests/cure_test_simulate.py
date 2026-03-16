@@ -18,7 +18,7 @@ class TestSimulateMotorPanel:
 
     def test_required_columns(self):
         df = simulate_motor_panel(n_policies=50, seed=2)
-        required = {"policy_id", "ncb_years", "age", "vehicle_age",
+        required = {"policy_id", "ncd_years", "age", "vehicle_age",
                     "is_immune", "tenure_months", "claimed", "true_cure_prob"}
         assert required.issubset(set(df.columns))
 
@@ -50,8 +50,8 @@ class TestSimulateMotorPanel:
 
     def test_ncb_range(self):
         df = simulate_motor_panel(n_policies=200, seed=8)
-        assert df["ncb_years"].min() >= 0
-        assert df["ncb_years"].max() <= 9
+        assert df["ncd_years"].min() >= 0
+        assert df["ncd_years"].max() <= 9
 
     def test_age_range(self):
         df = simulate_motor_panel(n_policies=200, seed=9)
@@ -76,7 +76,7 @@ class TestSimulateMotorPanel:
     def test_different_seeds_differ(self):
         df1 = simulate_motor_panel(n_policies=100, seed=1)
         df2 = simulate_motor_panel(n_policies=100, seed=2)
-        assert not df1["ncb_years"].equals(df2["ncb_years"])
+        assert not df1["ncd_years"].equals(df2["ncd_years"])
 
     def test_immune_policyholders_not_event(self):
         df = simulate_motor_panel(n_policies=500, cure_fraction=0.5, seed=13)
@@ -86,8 +86,8 @@ class TestSimulateMotorPanel:
 
     def test_ncb_higher_means_more_immune(self):
         df = simulate_motor_panel(n_policies=2000, seed=14)
-        low_ncb = df[df["ncb_years"] <= 2]["is_immune"].mean()
-        high_ncb = df[df["ncb_years"] >= 7]["is_immune"].mean()
+        low_ncb = df[df["ncd_years"] <= 2]["is_immune"].mean()
+        high_ncb = df[df["ncd_years"] >= 7]["is_immune"].mean()
         # Higher NCB should yield higher immune rate
         assert high_ncb > low_ncb
 

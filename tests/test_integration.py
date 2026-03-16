@@ -38,8 +38,8 @@ class TestFullPipeline:
 
         # Step 2: Fit cure model
         fitter = WeibullMixtureCureFitter(
-            cure_covariates=["ncd_level"],
-            uncured_covariates=["ncd_level"],
+            cure_covariates=["ncd_years"],
+            uncured_covariates=["ncd_years"],
             penalizer=0.1,
             max_iter=100,
         )
@@ -47,7 +47,7 @@ class TestFullPipeline:
         single_interval = survival_df.group_by("policy_id").agg([
             pl.col("stop").max(),
             pl.col("event").max(),
-            pl.col("ncd_level").last(),
+            pl.col("ncd_years").last(),
         ])
         fitter.fit(
             single_interval,
@@ -65,7 +65,7 @@ class TestFullPipeline:
 
         # Step 4: Lapse table
         lapse_table = LapseTable(survival_model=fitter, time_points=[1, 2, 3])
-        table_result = lapse_table.generate({"ncd_level": 3})
+        table_result = lapse_table.generate({"ncd_years": 3})
 
         return {
             "survival_df": survival_df,

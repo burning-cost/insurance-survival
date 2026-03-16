@@ -63,7 +63,7 @@ class WeibullMixtureCureFitter:
     ----------
     cure_covariates : list[str]
         Column names for covariates entering the cure fraction logistic model.
-        Typically: ["ncd_level", "tenure", "channel_direct"].
+        Typically: ["ncd_years", "tenure", "channel_direct"].
     uncured_covariates : list[str]
         Column names for covariates in the Weibull AFT scale parameter.
         Can overlap with cure_covariates.
@@ -90,8 +90,8 @@ class WeibullMixtureCureFitter:
     >>> from insurance_survival import WeibullMixtureCureFitter
     >>>
     >>> fitter = WeibullMixtureCureFitter(
-    ...     cure_covariates=["ncd_level", "tenure"],
-    ...     uncured_covariates=["ncd_level", "annual_premium_scaled"],
+    ...     cure_covariates=["ncd_years", "tenure"],
+    ...     uncured_covariates=["ncd_years", "annual_premium_scaled"],
     ... )
     >>> fitter.fit(survival_df, duration_col="stop", event_col="event")
     >>> cure_probs = fitter.predict_cure(new_df)

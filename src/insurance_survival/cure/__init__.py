@@ -45,8 +45,8 @@ Quick start
 >>> df = simulate_motor_panel(n_policies=3000, cure_fraction=0.40, seed=42)
 >>> qn = sufficient_followup_test(df["tenure_months"], df["claimed"])
 >>> model = WeibullMixtureCure(
-...     incidence_formula="ncb_years + age + vehicle_age",
-...     latency_formula="ncb_years + age",
+...     incidence_formula="ncd_years + age + vehicle_age",
+...     latency_formula="ncd_years + age",
 ...     n_em_starts=5,
 ... )
 >>> model.fit(df, duration_col="tenure_months", event_col="claimed")

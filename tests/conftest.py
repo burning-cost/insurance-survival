@@ -51,7 +51,7 @@ def make_cure_dgp(
     Returns
     -------
     pl.DataFrame
-        Columns: policy_id, stop, event, ncd_level, cure_prob_true.
+        Columns: policy_id, stop, event, ncd_years, cure_prob_true.
     """
     rng = np.random.default_rng(seed)
 
@@ -96,7 +96,7 @@ def make_cure_dgp(
         "policy_id": [f"POL{i:05d}" for i in range(n)],
         "stop": observed_time.tolist(),
         "event": event.tolist(),
-        "ncd_level": ncd.tolist(),
+        "ncd_years": ncd.tolist(),
         "cure_prob_true": cure_prob.tolist(),
     })
 
@@ -154,7 +154,7 @@ def make_transaction_dgp(
             "transaction_type": "inception",
             "inception_date": inception,
             "expiry_date": expiry,
-            "ncd_level": ncd,
+            "ncd_years": ncd,
             "annual_premium": premium,
             "vehicle_age": vehicle_age,
             "policyholder_age": policyholder_age,
@@ -176,7 +176,7 @@ def make_transaction_dgp(
                     "transaction_type": "nonrenewal",
                     "inception_date": inception,
                     "expiry_date": expiry,
-                    "ncd_level": ncd,
+                    "ncd_years": ncd,
                     "annual_premium": premium,
                     "vehicle_age": vehicle_age,
                     "policyholder_age": policyholder_age,
@@ -200,7 +200,7 @@ def make_transaction_dgp(
                     "transaction_type": "renewal",
                     "inception_date": inception,
                     "expiry_date": next_expiry,
-                    "ncd_level": current_ncd,
+                    "ncd_years": current_ncd,
                     "annual_premium": premium * (1.0 - current_ncd * 0.02),
                     "vehicle_age": vehicle_age + r + 1,
                     "policyholder_age": policyholder_age + r + 1,
@@ -216,7 +216,7 @@ def make_transaction_dgp(
                     "transaction_type": "nonrenewal",
                     "inception_date": inception,
                     "expiry_date": current_expiry,
-                    "ncd_level": current_ncd,
+                    "ncd_years": current_ncd,
                     "annual_premium": premium,
                     "vehicle_age": vehicle_age + n_renewals,
                     "policyholder_age": policyholder_age + n_renewals,
@@ -233,7 +233,7 @@ def make_transaction_dgp(
                     "transaction_type": "mta",
                     "inception_date": inception,
                     "expiry_date": expiry,
-                    "ncd_level": ncd,
+                    "ncd_years": ncd,
                     "annual_premium": premium * 1.05,
                     "vehicle_age": vehicle_age,
                     "policyholder_age": policyholder_age,
@@ -248,7 +248,7 @@ def make_transaction_dgp(
                     "transaction_type": "nonrenewal",
                     "inception_date": inception,
                     "expiry_date": expiry,
-                    "ncd_level": ncd,
+                    "ncd_years": ncd,
                     "annual_premium": premium,
                     "vehicle_age": vehicle_age,
                     "policyholder_age": policyholder_age,
@@ -260,7 +260,7 @@ def make_transaction_dgp(
         pl.col("transaction_date").cast(pl.Date),
         pl.col("inception_date").cast(pl.Date),
         pl.col("expiry_date").cast(pl.Date),
-        pl.col("ncd_level").cast(pl.Int32),
+        pl.col("ncd_years").cast(pl.Int32),
         pl.col("vehicle_age").cast(pl.Int32),
         pl.col("policyholder_age").cast(pl.Int32),
         pl.col("channel").cast(pl.Utf8),
@@ -301,8 +301,8 @@ def fitted_cure_fitter(small_cure_dgp: pl.DataFrame) -> object:
     """Pre-fitted WeibullMixtureCureFitter for reuse in multiple tests."""
     from insurance_survival import WeibullMixtureCureFitter
     fitter = WeibullMixtureCureFitter(
-        cure_covariates=["ncd_level"],
-        uncured_covariates=["ncd_level"],
+        cure_covariates=["ncd_years"],
+        uncured_covariates=["ncd_years"],
         penalizer=0.05,
         max_iter=200,
     )
@@ -316,7 +316,7 @@ def fitted_lifelines_fitter(small_cure_dgp: pl.DataFrame) -> object:
     from lifelines import WeibullAFTFitter
     fitter = WeibullAFTFitter()
     # Drop non-numeric string columns that lifelines cannot handle
-    fit_df = small_cure_dgp.select(["stop", "event", "ncd_level"]).to_pandas()
+    fit_df = small_cure_dgp.select(["stop", "event", "ncd_years"]).to_pandas()
     fitter.fit(
         fit_df,
         duration_col="stop",
@@ -355,8 +355,8 @@ def fitted_weibull(motor_df):
     """Fitted WeibullMixtureCure model (session-scoped for speed)."""
     from insurance_survival.cure import WeibullMixtureCure
     model = WeibullMixtureCure(
-        incidence_formula="ncb_years + age + vehicle_age",
-        latency_formula="ncb_years + age",
+        incidence_formula="ncd_years + age + vehicle_age",
+        latency_formula="ncd_years + age",
         n_em_starts=2,
         max_iter=50,
         random_state=42,
@@ -370,8 +370,8 @@ def fitted_lognormal(motor_df):
     """Fitted LogNormalMixtureCure model."""
     from insurance_survival.cure import LogNormalMixtureCure
     model = LogNormalMixtureCure(
-        incidence_formula="ncb_years + age",
-        latency_formula="ncb_years",
+        incidence_formula="ncd_years + age",
+        latency_formula="ncd_years",
         n_em_starts=2,
         max_iter=50,
         random_state=42,
@@ -385,7 +385,7 @@ def fitted_promotion(motor_df):
     """Fitted PromotionTimeCure model."""
     from insurance_survival.cure import PromotionTimeCure
     model = PromotionTimeCure(
-        formula="ncb_years + age + vehicle_age",
+        formula="ncd_years + age + vehicle_age",
         random_state=42,
     )
     model.fit(motor_df, duration_col="tenure_months", event_col="claimed")

@@ -183,7 +183,7 @@ print()
 cox_survival = np.zeros(len(eval_times_months))
 
 if _lifelines_available:
-    cox_df = df[["duration_months", "lapsed", "ncb_years", "age", "vehicle_age"]].copy()
+    cox_df = df[["duration_months", "lapsed", "ncd_years", "age", "vehicle_age"]].copy()
     cph = CoxPHFitter()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -227,8 +227,8 @@ print(f"  Fitting on subsample: {N_SUBSAMPLE:,} policies (full dataset: {N_POLIC
 print(f"  Subsampled event rate: {df_fit['lapsed'].mean():.1%}")
 
 model = WeibullMixtureCure(
-    incidence_formula="ncb_years + age + vehicle_age",
-    latency_formula="ncb_years",
+    incidence_formula="ncd_years + age + vehicle_age",
+    latency_formula="ncd_years",
     n_em_starts=3,
     max_iter=150,
     tol=1e-5,

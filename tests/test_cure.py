@@ -27,8 +27,8 @@ class TestWeibullMixtureCureFitterFit:
     def test_fit_returns_self(self, small_cure_dgp):
         """fit() returns self for method chaining."""
         fitter = WeibullMixtureCureFitter(
-            cure_covariates=["ncd_level"],
-            uncured_covariates=["ncd_level"],
+            cure_covariates=["ncd_years"],
+            uncured_covariates=["ncd_years"],
             penalizer=0.1,
         )
         result = fitter.fit(small_cure_dgp, duration_col="stop", event_col="event")
@@ -71,8 +71,8 @@ class TestWeibullMixtureCureFitterFit:
     def test_fit_with_polars_input(self, small_cure_dgp):
         """Accepts a Polars DataFrame without error."""
         fitter = WeibullMixtureCureFitter(
-            cure_covariates=["ncd_level"],
-            uncured_covariates=["ncd_level"],
+            cure_covariates=["ncd_years"],
+            uncured_covariates=["ncd_years"],
             penalizer=0.1,
         )
         fitter.fit(small_cure_dgp)  # should not raise
@@ -85,13 +85,13 @@ class TestWeibullMixtureCureFitterFit:
             "policy_id": ["BAD"],
             "stop": [0.0],
             "event": [0],
-            "ncd_level": [3],
+            "ncd_years": [3],
             "cure_prob_true": [0.5],
         })
         df = pl.concat([dgp, zero_row])
         fitter = WeibullMixtureCureFitter(
-            cure_covariates=["ncd_level"],
-            uncured_covariates=["ncd_level"],
+            cure_covariates=["ncd_years"],
+            uncured_covariates=["ncd_years"],
             penalizer=0.1,
         )
         with pytest.warns(UserWarning, match="non-positive durations"):
@@ -119,8 +119,8 @@ class TestWeibullMixtureCureFitterParameterRecovery:
             seed=42,
         )
         fitter = WeibullMixtureCureFitter(
-            cure_covariates=["ncd_level"],
-            uncured_covariates=["ncd_level"],
+            cure_covariates=["ncd_years"],
+            uncured_covariates=["ncd_years"],
             penalizer=0.01,
             max_iter=300,
         )
@@ -130,7 +130,7 @@ class TestWeibullMixtureCureFitterParameterRecovery:
     def test_ncd_coef_recovery(self, recovery_fitter):
         """Recovered NCD coefficient is within ±0.2 of true 0.3."""
         fitter, _ = recovery_fitter
-        ncd_row = fitter.cure_params_.filter(pl.col("covariate") == "ncd_level")
+        ncd_row = fitter.cure_params_.filter(pl.col("covariate") == "ncd_years")
         assert len(ncd_row) == 1
         estimated = ncd_row["coef"][0]
         true_value = 0.3
@@ -249,8 +249,8 @@ class TestWeibullMixtureCureFitterSummary:
 
     def test_summary_unfitted_raises(self):
         fitter = WeibullMixtureCureFitter(
-            cure_covariates=["ncd_level"],
-            uncured_covariates=["ncd_level"],
+            cure_covariates=["ncd_years"],
+            uncured_covariates=["ncd_years"],
         )
         with pytest.raises(RuntimeError, match="not fitted"):
             fitter.summary()
@@ -262,8 +262,8 @@ class TestWeibullMixtureCureFitterEdgeCases:
     def test_predict_before_fit_raises(self, small_cure_dgp):
         """Predicting on unfitted model raises RuntimeError."""
         fitter = WeibullMixtureCureFitter(
-            cure_covariates=["ncd_level"],
-            uncured_covariates=["ncd_level"],
+            cure_covariates=["ncd_years"],
+            uncured_covariates=["ncd_years"],
         )
         with pytest.raises(RuntimeError, match="not fitted"):
             fitter.predict_cure(small_cure_dgp)
@@ -271,8 +271,8 @@ class TestWeibullMixtureCureFitterEdgeCases:
     def test_high_penalizer_still_converges(self, small_cure_dgp):
         """High penalizer should still produce a fitted model."""
         fitter = WeibullMixtureCureFitter(
-            cure_covariates=["ncd_level"],
-            uncured_covariates=["ncd_level"],
+            cure_covariates=["ncd_years"],
+            uncured_covariates=["ncd_years"],
             penalizer=10.0,
         )
         fitter.fit(small_cure_dgp)
@@ -281,8 +281,8 @@ class TestWeibullMixtureCureFitterEdgeCases:
     def test_no_intercept_fitting(self, small_cure_dgp):
         """fit_intercept=False runs without error."""
         fitter = WeibullMixtureCureFitter(
-            cure_covariates=["ncd_level"],
-            uncured_covariates=["ncd_level"],
+            cure_covariates=["ncd_years"],
+            uncured_covariates=["ncd_years"],
             fit_intercept=False,
             penalizer=0.1,
         )

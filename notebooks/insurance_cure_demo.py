@@ -65,8 +65,8 @@ print(qn_result.summary())
 
 # COMMAND ----------
 model = WeibullMixtureCure(
-    incidence_formula="ncb_years + age + vehicle_age",
-    latency_formula="ncb_years + age",
+    incidence_formula="ncd_years + age + vehicle_age",
+    latency_formula="ncd_years + age",
     n_em_starts=5,
     max_iter=150,
     random_state=42,
@@ -118,7 +118,7 @@ print(scorecard.summary())
 # MAGIC ## Step 7: Compare incidence by NCB band
 
 # COMMAND ----------
-ncb_groups = df.groupby("ncb_years").agg(
+ncb_groups = df.groupby("ncd_years").agg(
     n=("policy_id", "count"),
     true_immune_rate=("is_immune", "mean"),
     predicted_cure=("cure_score", "mean"),
@@ -132,8 +132,8 @@ print(ncb_groups)
 
 # COMMAND ----------
 model_ln = LogNormalMixtureCure(
-    incidence_formula="ncb_years + age + vehicle_age",
-    latency_formula="ncb_years + age",
+    incidence_formula="ncd_years + age + vehicle_age",
+    latency_formula="ncd_years + age",
     n_em_starts=3,
     max_iter=100,
     random_state=42,
@@ -151,7 +151,7 @@ print("(Higher = better fit to this dataset)")
 
 # COMMAND ----------
 model_pt = PromotionTimeCure(
-    formula="ncb_years + age + vehicle_age",
+    formula="ncd_years + age + vehicle_age",
     random_state=42,
 )
 model_pt.fit(df, duration_col="tenure_months", event_col="claimed")

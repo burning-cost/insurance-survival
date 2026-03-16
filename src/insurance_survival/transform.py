@@ -127,7 +127,7 @@ class ExposureTransformer:
             - inception_date (Date)
             - expiry_date (Date)
 
-            Optional columns passed through to output: ncd_level,
+            Optional columns passed through to output: ncd_years,
             annual_premium, vehicle_age, policyholder_age, channel.
 
         Returns
@@ -190,7 +190,7 @@ class ExposureTransformer:
         """Build start/stop intervals for every policy."""
         # Optional covariate columns to carry through
         optional_cols = [
-            c for c in ("ncd_level", "annual_premium", "vehicle_age",
+            c for c in ("ncd_years", "annual_premium", "vehicle_age",
                         "policyholder_age", "channel", "event_type")
             if c in df.columns
         ]
