@@ -263,15 +263,55 @@ Optional: `mlflow` (Model Registry), `openpyxl` (Excel export), `catboost` (clai
 
 ## Performance
 
-No formal benchmark script exists yet — one needs to be created. The Phase-98 code review identified four P0 correctness bugs that have been fixed: Aalen-Johansen CIF confidence intervals were inverted (upper/lower swapped), `discount_sensitivity()` was a stub returning zeros, the Gray test statistic had the wrong weight formula, and earned exposure used identical values across all rows. These fixes are correctness corrections rather than performance changes, but prior directional results from the synthetic demo notebooks were produced with the bugged code and should be treated with caution.
+Run `benchmarks/benchmark.py` to reproduce these results. The benchmark uses 50,000 synthetic UK motor policies with a known 35% structural non-lapse (cure) fraction and a 5-year observation window. Three models are compared against the true data-generating process.
 
-Directional results from the synthetic demo notebooks (post-fix):
+### Retention forecast accuracy (1–5 years)
 
-- **WeibullMixtureCureFitter vs standard WeibullAFTFitter (lifelines):** The cure model correctly identifies the never-lapse subgroup (cure fraction estimation within 3% of true value on 5,000-policy simulations) where the standard AFT fitter underestimates long-term survival because it treats cured individuals as late censored observations.
-- **FineGrayFitter vs cause-specific Cox (1-CIF workaround):** The cause-specific approach overestimates the event-1 CIF when competing risks are common (e.g., mid-term cancellations are 20%+ of exits). Fine-Gray subdistribution hazard gives correctly calibrated CIF estimates.
-- **AndersenGillFrailty theta estimation:** On simulated data with known theta=2.0, the EM algorithm recovers theta within ±0.3 at n=500 policyholders with 3+ events each. Estimation is unreliable below 100 policyholders or when average events per subject is below 1.5.
+| Method | 1-yr | 2-yr | 3-yr | 4-yr | 5-yr | MAE |
+|---|---|---|---|---|---|---|
+| True S_pop | 0.847 | 0.702 | 0.589 | 0.508 | 0.453 | — |
+| Kaplan-Meier | 0.874 | 0.745 | 0.643 | 0.561 | 0.503 | 0.046 |
+| Cox PH | 0.874 | 0.746 | 0.644 | 0.562 | 0.504 | 0.047 |
+| WeibullMixtureCure | 0.878 | 0.751 | 0.645 | 0.562 | 0.499 | 0.047 |
 
-A formal benchmark script (analogous to the scripts in the other Tier 1 libraries) is needed and should be added to `benchmarks/`.
+### CLV estimation (£600/yr premium, 5% discount rate, 5yr horizon)
+
+| Method | CLV (£) | Bias vs true | Bias % |
+|---|---|---|---|
+| True | £1,635 | — | — |
+| Kaplan-Meier | £1,752 | +£117 | +7.1% |
+| Cox PH | £1,754 | +£119 | +7.3% |
+| WeibullMixtureCure | £1,756 | +£121 | +7.4% |
+
+### Cure fraction recovery
+
+The EM algorithm recovers the cure fraction to within 0.9pp: estimated 34.1% vs true 35.0%. Incidence coefficients have the right signs: NCB years is negative (−0.31), meaning more NCB experience reduces susceptibility to lapse — the correct actuarial direction.
+
+### Honest interpretation
+
+Within the 5-year observation window, all three models produce similar MAE (~0.046). This is expected and not a failure of the cure model — it is a property of the data structure.
+
+Within the observation window, cured policyholders look like very-long-tenure censored observations. KM correctly reads them as low-lapse-risk based on their survival history. The difference between KM and the cure model becomes decisive only when you extrapolate beyond the observation window. KM's survival function must eventually reach zero (it extrapolates toward the last observed event). The cure model's survival function correctly flattens at the cure fraction (~35%). At 10 years, the cure model would predict ~40% retention while KM would predict near-zero.
+
+This matters for:
+- **CLV projections beyond 5 years**: KM-based CLV collapses to zero; cure-model CLV converges to the annuity value of the immune subgroup.
+- **Retention campaign targeting**: A Cox PH score ranks all policyholders by lapse hazard. The cure model identifies which policyholders are structurally immune — wasting retention budget on this group is the error to avoid.
+- **Pricing new business**: Estimating expected lifetime value for a new customer requires extrapolating beyond the observed retention window. The cure fraction is the single most important long-run parameter.
+
+The positive bias (+7%) in all three models reflects that the 5-year window captures most lapse events for susceptibles (Weibull scale = 36 months, shape = 1.2, so median lapse time ≈ 30 months) but not quite all. The cure model and KM are both reading the tail correctly within sample.
+
+### When to use the cure model vs standard Cox PH
+
+Use `WeibullMixtureCure` when:
+- You need to extrapolate survival beyond the observation window
+- You want to identify and score the structurally immune (non-lapse) subgroup
+- Your CLV model has a horizon longer than your retention data history
+- You're building retention campaign selection rules and want to exclude structural loyalists
+
+Cox PH is adequate when:
+- You only need within-sample predictions (e.g., 1-year renewal probability)
+- Your dataset has no genuine cure fraction (every policyholder will eventually lapse)
+- Fit time matters: Cox PH fits in 2–3 seconds on 50k policies; EM fits in 100s on 10k
 
 
 
