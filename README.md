@@ -287,7 +287,7 @@ Run `benchmarks/benchmark.py` to reproduce these results. The benchmark uses 50,
 
 ### Cure fraction recovery
 
-The EM algorithm recovers the cure fraction to within 0.9pp: estimated 34.1% vs true 35.0%. Incidence coefficients have the right signs: NCD years is negative (−0.31), meaning more NCB experience reduces susceptibility to lapse — the correct actuarial direction.
+The EM algorithm recovers the cure fraction to within 0.9pp: estimated 34.1% vs true 35.0%. The EM runs for 150 iterations (max_iter default) on a 10,000-policy subsample in ~91s and exits with converged=False — the survival estimates are stable and the cure fraction accurate, but tighter convergence requires max_iter=300 or tol=1e-6. Incidence coefficients have the right signs: NCB years is negative (−0.31), meaning more NCB experience reduces susceptibility to lapse — the correct actuarial direction.
 
 ### Honest interpretation
 
