@@ -127,8 +127,8 @@ class ExposureTransformer:
             - inception_date (Date)
             - expiry_date (Date)
 
-            Optional columns passed through to output: ncd_years,
-            annual_premium, vehicle_age, policyholder_age, channel.
+            All columns beyond the five required columns are passed through
+            to the output survival DataFrame as covariates.
 
         Returns
         -------
@@ -188,12 +188,14 @@ class ExposureTransformer:
 
     def _build_intervals(self, df: pl.DataFrame) -> pl.DataFrame:
         """Build start/stop intervals for every policy."""
-        # Optional covariate columns to carry through
-        optional_cols = [
-            c for c in ("ncd_years", "annual_premium", "vehicle_age",
-                        "policyholder_age", "channel", "event_type")
-            if c in df.columns
-        ]
+        # Pass through all columns that are not structural required fields.
+        # This includes any user-supplied covariate (ncd_years, channel_direct,
+        # driver_age, etc.) without requiring them to be in a hardcoded list.
+        _STRUCTURAL_COLS = {
+            "policy_id", "transaction_date", "transaction_type",
+            "inception_date", "expiry_date",
+        }
+        optional_cols = [c for c in df.columns if c not in _STRUCTURAL_COLS]
 
         all_intervals: list[dict[str, Any]] = []
         cutoff = self.observation_cutoff
