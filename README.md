@@ -76,13 +76,13 @@ Shared frailty models for recurrent insurance claims. Python has no shared frail
 ## Installation
 
 ```bash
-pip install insurance-survival
+uv add insurance-survival
 ```
 
 With optional extras:
 
 ```bash
-pip install "insurance-survival[mlflow,plot,excel]"
+uv add "insurance-survival[mlflow,plot,excel]"
 ```
 
 > 💬 Questions or feedback? Start a [Discussion](https://github.com/burning-cost/insurance-survival/discussions). Found it useful? A ⭐ helps others find it.
