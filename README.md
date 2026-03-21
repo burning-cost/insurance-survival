@@ -85,6 +85,8 @@ With optional extras:
 pip install "insurance-survival[mlflow,plot,excel]"
 ```
 
+> 💬 Questions or feedback? Start a [Discussion](https://github.com/burning-cost/insurance-survival/discussions). Found it useful? A ⭐ helps others find it.
+
 ## Quick start
 
 ```python
