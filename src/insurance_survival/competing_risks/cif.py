@@ -31,9 +31,8 @@ multi-state models. Statistics in Medicine, 26(11), 2389-2430.
 
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -228,11 +227,13 @@ class AalenJohansenFitter:
 
     def plot(
         self,
-        ax: Optional[plt.Axes] = None,
+        ax: Optional[Any] = None,
         ci: bool = True,
         **kwargs,
-    ) -> plt.Axes:
+    ) -> Any:
         """Plot the CIF with optional confidence band.
+
+        Requires matplotlib. Install with: pip install insurance-survival[plot]
 
         Parameters
         ----------
@@ -247,6 +248,14 @@ class AalenJohansenFitter:
         -------
         plt.Axes
         """
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            raise ImportError(
+                "matplotlib is required for plotting. "
+                "Install with: pip install insurance-survival[plot]"
+            )
+
         self._check_fitted()
         if ax is None:
             _, ax = plt.subplots()
@@ -285,14 +294,16 @@ def plot_stacked_cif(
     E: "pd.Series | np.ndarray",
     causes: Optional[list[int]] = None,
     cause_labels: Optional[dict[int, str]] = None,
-    ax: Optional[plt.Axes] = None,
+    ax: Optional[Any] = None,
     times: Optional[np.ndarray] = None,
-) -> plt.Axes:
+) -> Any:
     """Plot stacked cumulative incidence functions for all causes.
 
     The stacked plot shows, at each time point, the probability of each cause
     having occurred. The total height equals the overall event probability
     (1 - overall survival).
+
+    Requires matplotlib. Install with: pip install insurance-survival[plot]
 
     Parameters
     ----------
@@ -313,6 +324,14 @@ def plot_stacked_cif(
     -------
     plt.Axes
     """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        raise ImportError(
+            "matplotlib is required for plotting. "
+            "Install with: pip install insurance-survival[plot]"
+        )
+
     T = np.asarray(T, dtype=float)
     E = np.asarray(E, dtype=int)
 

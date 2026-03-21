@@ -31,9 +31,8 @@ Concordance for prognostic models with competing risks. Biostatistics, 15(3),
 
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -360,10 +359,12 @@ def calibration_curve(
 
 def plot_calibration(
     calibration_df: pd.DataFrame,
-    ax: Optional[plt.Axes] = None,
+    ax: Optional[Any] = None,
     title: str = "CIF Calibration",
-) -> plt.Axes:
+) -> Any:
     """Plot observed vs predicted CIF from ``calibration_curve()`` output.
+
+    Requires matplotlib. Install with: pip install insurance-survival[plot]
 
     Parameters
     ----------
@@ -378,6 +379,14 @@ def plot_calibration(
     -------
     plt.Axes
     """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        raise ImportError(
+            "matplotlib is required for plotting. "
+            "Install with: pip install insurance-survival[plot]"
+        )
+
     if ax is None:
         _, ax = plt.subplots()
 

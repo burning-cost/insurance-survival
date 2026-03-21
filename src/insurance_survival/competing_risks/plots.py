@@ -10,24 +10,30 @@ plot_cumulative_hazard Plot the baseline cumulative subdistribution hazard
 These are convenience wrappers. The core plotting methods are also available
 directly on ``AalenJohansenFitter.plot()`` and
 ``FineGrayFitter.plot_partial_effects_on_outcome()``.
+
+All functions require matplotlib. Install with: pip install insurance-survival[plot]
 """
 
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+_MATPLOTLIB_MSG = (
+    "matplotlib is required for plotting. "
+    "Install with: pip install insurance-survival[plot]"
+)
 
 
 def plot_cif_comparison(
     fitters: dict,
     times: Optional[np.ndarray] = None,
     cause_labels: Optional[dict] = None,
-    ax: Optional[plt.Axes] = None,
+    ax: Optional[Any] = None,
     title: str = "Cumulative Incidence Functions",
-) -> plt.Axes:
+) -> Any:
     """Plot CIFs from multiple ``AalenJohansenFitter`` instances.
 
     Parameters
@@ -52,6 +58,11 @@ def plot_cif_comparison(
     >>> fitters = {"Group A": aj_a, "Group B": aj_b}
     >>> plot_cif_comparison(fitters)
     """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        raise ImportError(_MATPLOTLIB_MSG)
+
     if ax is None:
         _, ax = plt.subplots()
 
@@ -74,10 +85,10 @@ def plot_cif_comparison(
 
 def plot_forest(
     model: "FineGrayFitter",
-    ax: Optional[plt.Axes] = None,
+    ax: Optional[Any] = None,
     title: Optional[str] = None,
     exponentiate: bool = True,
-) -> plt.Axes:
+) -> Any:
     """Subdistribution hazard ratio forest plot.
 
     Plots each covariate as a row with its SHR (or log-SHR) and confidence
@@ -99,6 +110,11 @@ def plot_forest(
     -------
     plt.Axes
     """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        raise ImportError(_MATPLOTLIB_MSG)
+
     from .fine_gray import FineGrayFitter
 
     if not model._fitted:
@@ -159,9 +175,9 @@ def plot_forest(
 
 def plot_cumulative_hazard(
     model: "FineGrayFitter",
-    ax: Optional[plt.Axes] = None,
+    ax: Optional[Any] = None,
     title: Optional[str] = None,
-) -> plt.Axes:
+) -> Any:
     """Plot the Breslow baseline cumulative subdistribution hazard.
 
     Parameters
@@ -177,6 +193,11 @@ def plot_cumulative_hazard(
     -------
     plt.Axes
     """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        raise ImportError(_MATPLOTLIB_MSG)
+
     if not model._fitted:
         raise RuntimeError("Model must be fitted before plotting.")
 
@@ -201,9 +222,9 @@ def plot_brier_score(
     times: np.ndarray,
     brier_scores: "pd.Series | np.ndarray",
     null_score: float = 0.25,
-    ax: Optional[plt.Axes] = None,
+    ax: Optional[Any] = None,
     title: str = "Brier Score Over Time",
-) -> plt.Axes:
+) -> Any:
     """Plot the IPCW Brier score curve.
 
     Parameters
@@ -224,6 +245,11 @@ def plot_brier_score(
     -------
     plt.Axes
     """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        raise ImportError(_MATPLOTLIB_MSG)
+
     if ax is None:
         _, ax = plt.subplots()
 

@@ -41,9 +41,8 @@ DOI: 10.1080/01621459.1999.10474144.
 from __future__ import annotations
 
 import warnings
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
@@ -382,9 +381,11 @@ class FineGrayFitter:
         covariate: str,
         values: list,
         times: Optional[np.ndarray] = None,
-        ax: Optional[plt.Axes] = None,
-    ) -> plt.Axes:
+        ax: Optional[Any] = None,
+    ) -> Any:
         """Plot the CIF at different levels of one covariate, all else at mean.
+
+        Requires matplotlib. Install with: pip install insurance-survival[plot]
 
         Parameters
         ----------
@@ -401,6 +402,14 @@ class FineGrayFitter:
         -------
         plt.Axes
         """
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            raise ImportError(
+                "matplotlib is required for plotting. "
+                "Install with: pip install insurance-survival[plot]"
+            )
+
         self._check_fitted()
 
         if covariate not in self._covariate_cols:
@@ -437,9 +446,11 @@ class FineGrayFitter:
         df: pd.DataFrame,
         covariate: str,
         times: Optional[np.ndarray] = None,
-        ax: Optional[plt.Axes] = None,
-    ) -> plt.Axes:
+        ax: Optional[Any] = None,
+    ) -> Any:
         """Plot predicted CIF for each unique value of a categorical covariate.
+
+        Requires matplotlib. Install with: pip install insurance-survival[plot]
 
         Parameters
         ----------
@@ -457,6 +468,14 @@ class FineGrayFitter:
         -------
         plt.Axes
         """
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            raise ImportError(
+                "matplotlib is required for plotting. "
+                "Install with: pip install insurance-survival[plot]"
+            )
+
         self._check_fitted()
 
         if ax is None:

@@ -33,10 +33,10 @@ dependencies = [
     "pandas>=2.0",
     "scikit-learn>=1.1",
     "joblib>=1.2",
-    "matplotlib>=3.7.0",
 ]
 
 [project.optional-dependencies]
+plot = ["matplotlib>=3.7.0"]
 mlflow = ["mlflow>=2.10.0"]
 excel = ["openpyxl>=3.1.0"]
 catboost = ["catboost>=1.2.0"]
@@ -46,6 +46,7 @@ dev = [
     "mlflow>=2.10.0",
     "catboost>=1.2.0",
     "pytest-cov>=4.1.0",
+    "matplotlib>=3.7.0",
 ]
 all = [
     "mlflow>=2.10.0",
