@@ -8,7 +8,7 @@ version = "0.3.2"
 description = "Survival analysis for UK insurance pricing: cure models, competing risks, recurrent events, CLV, lapse tables. Extends lifelines with insurance-specific gaps."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
 authors = [{ name = "Burning Cost", email = "pricing.frontier@gmail.com" }]
 keywords = ["insurance", "survival", "lapse", "CLV", "lifelines", "actuarial", "pricing", "cure-model", "competing-risks", "frailty", "recurrent-events"]
 classifiers = [
