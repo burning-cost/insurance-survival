@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "insurance-survival"
-version = "0.3.2"
+version = "0.3.5"
 description = "Survival analysis for UK insurance pricing: cure models, competing risks, recurrent events, CLV, lapse tables. Extends lifelines with insurance-specific gaps."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Burning Cost", email = "pricing.frontier@gmail.com" }]
 keywords = ["insurance", "survival", "lapse", "CLV", "lifelines", "actuarial", "pricing", "cure-model", "competing-risks", "frailty", "recurrent-events"]
@@ -15,7 +15,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Financial and Insurance Industry",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Information Analysis",
@@ -26,7 +25,7 @@ classifiers = [
 
 dependencies = [
     "polars>=1.0.0",
-    "lifelines>=0.27.0",
+    "lifelines>=0.29.0",
     "numpy>=1.24.0",
     "scipy>=1.11.0",
     "pyarrow>=12.0",
