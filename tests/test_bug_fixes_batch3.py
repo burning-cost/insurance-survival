@@ -31,6 +31,7 @@ class TestPremiumScheduleUsed:
             "policy_id": [f"P{i}" for i in range(n)],
             "annual_premium": [500.0] * n,
             "expected_loss": [200.0] * n,
+            "ncd_years": [5] * n,  # required by fitted_cure_fitter covariates
         })
 
     def test_schedule_differs_from_flat(self, fitted_cure_fitter):
@@ -238,9 +239,18 @@ class TestExposureWrittenVsEarned:
 class TestCureModelPolarsRejection:
     """BaseMixtureCure.fit() must raise TypeError for Polars input."""
 
+    def _make_polars_df(self, n: int = 50) -> pl.DataFrame:
+        """Build a minimal polars DataFrame with cure model covariates."""
+        import numpy as np
+        rng = np.random.default_rng(42)
+        return pl.DataFrame({
+            "ncd_years": rng.integers(0, 10, size=n).tolist(),
+            "tenure_months": rng.uniform(1.0, 60.0, size=n).tolist(),
+            "claimed": rng.integers(0, 2, size=n).tolist(),
+        })
+
     def test_polars_input_raises_typeerror(self):
         from insurance_survival.cure import WeibullMixtureCure
-        from insurance_survival.cure.simulate import simulate_motor_panel
 
         model = WeibullMixtureCure(
             incidence_formula="ncd_years",
@@ -248,7 +258,7 @@ class TestCureModelPolarsRejection:
             n_em_starts=1,
             max_iter=5,
         )
-        polars_df = simulate_motor_panel(n_policies=50, seed=42)
+        polars_df = self._make_polars_df(50)
         assert isinstance(polars_df, pl.DataFrame)
 
         with pytest.raises(TypeError, match="pandas DataFrame"):
@@ -256,7 +266,6 @@ class TestCureModelPolarsRejection:
 
     def test_pandas_input_works(self):
         from insurance_survival.cure import WeibullMixtureCure
-        from insurance_survival.cure.simulate import simulate_motor_panel
 
         model = WeibullMixtureCure(
             incidence_formula="ncd_years",
@@ -264,7 +273,7 @@ class TestCureModelPolarsRejection:
             n_em_starts=1,
             max_iter=10,
         )
-        polars_df = simulate_motor_panel(n_policies=100, seed=42)
+        polars_df = self._make_polars_df(100)
         pandas_df = polars_df.to_pandas()
 
         # Should not raise
