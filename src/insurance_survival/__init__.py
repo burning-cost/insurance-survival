@@ -106,7 +106,12 @@ from insurance_survival.clv import SurvivalCLV
 from insurance_survival.lapse_table import LapseTable
 from insurance_survival.mlflow_wrapper import LifelinesMLflowWrapper, register_survival_model
 
-__version__ = "0.3.2"
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("insurance-survival")
+except PackageNotFoundError:
+    __version__ = "0.0.0"  # not installed
 
 __all__ = [
     # Core (v0.1)
