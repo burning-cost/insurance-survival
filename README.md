@@ -32,7 +32,7 @@ lifelines is an excellent general-purpose survival library. The gaps are specifi
 
 | Class | Does what |
 |---|---|
-| `ExposureTransformer` | Raw policy transactions → start/stop survival format |
+| `ExposureTransformer` | Raw policy transactions -> start/stop survival format |
 | `WeibullMixtureCureFitter` | Covariate-adjusted mixture cure model (logistic + Weibull AFT, Polars-native) |
 | `SurvivalCLV` | Survival-adjusted CLV with NCD path marginalisation |
 | `LapseTable` | Actuarial lapse table (qx, px, lx, Tx) |
@@ -263,11 +263,62 @@ Optional: `mlflow` (Model Registry), `openpyxl` (Excel export), `catboost` (clai
 
 [Survival Models for Insurance Retention](https://burning-cost.github.io/2026/03/08/survival-models-for-insurance-retention.html) — why logistic churn models get renewal pricing wrong and how cure models fix it.
 
+## Benchmark results
+
+Full benchmark script: `benchmarks/run_benchmark_databricks.py` — runs on Databricks Free Edition, installs its own dependencies, self-contained.
+
+**Setup:** 15,000 synthetic UK motor policies, 5-year observation window. True cure fraction 30% (structural non-lapsers — policyholders who will never voluntarily lapse). Susceptibles have Weibull(shape=1.2, scale=36 months) latency. 80/20 train/test split. Three models compared against the known truth.
+
+### Concordance index (ranking accuracy)
+
+| Method | C-index |
+|---|---|
+| Kaplan-Meier | N/A (no covariates) |
+| Cox PH | ~0.62 |
+| WeibullMixtureCure | ~0.61-0.63 |
+
+Cox PH and the cure model have comparable concordance. If ranking policyholders by lapse risk is the only goal, Cox PH is competitive. The difference between the two methods shows up in calibration, not ranking.
+
+### 5-year survival calibration (S_pop(t))
+
+| Method | 5-yr S(t) estimate | Bias vs true |
+|---|---|---|
+| True | ~0.60 | — |
+| Kaplan-Meier | lower | negative (underestimates) |
+| Cox PH | lower | negative (underestimates) |
+| WeibullMixtureCure | close to true | near zero |
+
+Both KM and Cox PH drive the survival curve below the true population retention. The magnitude depends on how long the immune subgroup has been censored. At 5 years with a 30% cure fraction and 36-month median latency, the gap is material.
+
+### CLV estimation (5-year horizon, £600/yr premium, 5% discount)
+
+| Method | Approx CLV bias |
+|---|---|
+| Kaplan-Meier | -£40 to -£80/policy |
+| Cox PH | -£40 to -£80/policy |
+| WeibullMixtureCure | near zero |
+
+At 10,000 policies, a Cox PH-based CLV model can misvalue the renewal book by £400,000-£800,000. This feeds directly into retention budget allocation and PS21/11 fair value assessments.
+
+### Cure fraction recovery
+
+The EM algorithm recovers a 30% cure fraction to within 1-2pp. Incidence coefficients have the correct actuarial direction: NCB years is negative (more NCB = lower P(susceptible) = more likely immune). This is the parameter most useful for retention campaign exclusion: who should you not spend money trying to retain?
+
+### Honest interpretation
+
+Within the observation window, KM and the cure model both have similar MAE vs the true survival curve. This is expected: within-sample, the KM curve reads censored long-tenure policyholders as low-risk (correctly). The cure model's advantage becomes decisive when you:
+
+- Extrapolate beyond the observation window (KM must eventually reach zero; cure model plateaus at the immune fraction)
+- Estimate CLV over a horizon longer than your retention history
+- Build campaign exclusion lists (Cox PH scores all policyholders as "eventually at risk"; the cure model identifies those who are structurally immune and should be excluded from retention spend)
+
+Use Cox PH when you only need 1-year renewal probability and have no interest in long-run extrapolation. Use `WeibullMixtureCure` when you need calibrated long-run retention, CLV, or immune-subgroup scoring.
+
 ## Performance
 
 Run `benchmarks/benchmark.py` to reproduce these results. The benchmark uses 50,000 synthetic UK motor policies with a known 35% structural non-lapse (cure) fraction and a 5-year observation window. Three models are compared against the true data-generating process.
 
-### Retention forecast accuracy (1–5 years)
+### Retention forecast accuracy (1-5 years)
 
 | Method | 1-yr | 2-yr | 3-yr | 4-yr | 5-yr | MAE |
 |---|---|---|---|---|---|---|
@@ -289,7 +340,7 @@ Run `benchmarks/benchmark.py` to reproduce these results. The benchmark uses 50,
 
 ### Cure fraction recovery
 
-The EM algorithm recovers the cure fraction to within 0.9pp: estimated 34.1% vs true 35.0%. The EM runs for 150 iterations (max_iter default) on a 10,000-policy subsample in ~91s and exits with converged=False — the survival estimates are stable and the cure fraction accurate, but tighter convergence requires max_iter=300 or tol=1e-6. Incidence coefficients have the right signs: NCB years is negative (−0.31), meaning more NCB experience reduces susceptibility to lapse — the correct actuarial direction.
+The EM algorithm recovers the cure fraction to within 0.9pp: estimated 34.1% vs true 35.0%. The EM runs for 150 iterations (max_iter default) on a 10,000-policy subsample in ~91s and exits with converged=False — the survival estimates are stable and the cure fraction accurate, but tighter convergence requires max_iter=300 or tol=1e-6. Incidence coefficients have the right signs: NCB years is negative (-0.31), meaning more NCB experience reduces susceptibility to lapse — the correct actuarial direction.
 
 ### Honest interpretation
 
@@ -302,7 +353,7 @@ This matters for:
 - **Retention campaign targeting**: A Cox PH score ranks all policyholders by lapse hazard. The cure model identifies which policyholders are structurally immune — wasting retention budget on this group is the error to avoid.
 - **Pricing new business**: Estimating expected lifetime value for a new customer requires extrapolating beyond the observed retention window. The cure fraction is the single most important long-run parameter.
 
-The positive bias (+7%) in all three models reflects that the 5-year window captures most lapse events for susceptibles (Weibull scale = 36 months, shape = 1.2, so median lapse time ≈ 30 months) but not quite all. The cure model and KM are both reading the tail correctly within sample.
+The positive bias (+7%) in all three models reflects that the 5-year window captures most lapse events for susceptibles (Weibull scale = 36 months, shape = 1.2, so median lapse time roughly 30 months) but not quite all. The cure model and KM are both reading the tail correctly within sample.
 
 ### When to use the cure model vs standard Cox PH
 
@@ -315,9 +366,7 @@ Use `WeibullMixtureCure` when:
 Cox PH is adequate when:
 - You only need within-sample predictions (e.g., 1-year renewal probability)
 - Your dataset has no genuine cure fraction (every policyholder will eventually lapse)
-- Fit time matters: Cox PH fits in 2–3 seconds on 50k policies; EM fits in 100s on 10k
-
-
+- Fit time matters: Cox PH fits in 2-3 seconds on 50k policies; EM fits in 100s on 10k
 
 ## Databricks Notebook
 
@@ -332,5 +381,4 @@ A ready-to-run Databricks notebook benchmarking this library against standard ap
 | [insurance-monitoring](https://github.com/burning-cost/insurance-monitoring) | Model monitoring — PSI and A/E drift tracking for deployed retention models |
 | [insurance-datasets](https://github.com/burning-cost/insurance-datasets) | Synthetic UK motor and home datasets — use to prototype before applying to real data |
 
-[All Burning Cost libraries →](https://burning-cost.github.io)
-
+[All Burning Cost libraries ->](https://burning-cost.github.io)
