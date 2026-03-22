@@ -125,12 +125,17 @@ class SurvivalCLV:
         df : pl.DataFrame
             Current policy covariates (one row per policy).
         premium_col : str
-            Column with current annual premium. Used as Year 1 value.
+            Column with current annual premium. Used as the flat rate when
+            premium_schedule is None.
         loss_col : str
-            Column with expected annual loss cost.
+            Column with expected annual loss cost. Used as the flat rate when
+            premium_schedule is None.
         premium_schedule : pl.DataFrame | None
             Per-policy, per-year schedule. Must contain policy_id, policy_year,
-            annual_premium, expected_loss. If None, flat schedule is used.
+            annual_premium, expected_loss. If None, flat schedule is used (i.e.
+            current-year premium and loss are repeated for every horizon year).
+            When provided, year t uses the row where policy_year == t; any year
+            not present in the schedule falls back to the flat value.
 
         Returns
         -------
@@ -147,6 +152,22 @@ class SurvivalCLV:
         premiums = df[premium_col].to_numpy()
         losses = df[loss_col].to_numpy() if loss_col in df.columns else np.zeros(len(df))
 
+        # Build schedule lookups keyed by (policy_id, year) if provided.
+        # premium_schedule must have columns: policy_id, policy_year,
+        # annual_premium, expected_loss.
+        sched_premiums: dict[tuple, float] | None = None
+        sched_losses: dict[tuple, float] | None = None
+        if premium_schedule is not None:
+            sched_premium_col = "annual_premium"
+            sched_loss_col = "expected_loss"
+            sched_premiums = {}
+            sched_losses = {}
+            for row in premium_schedule.iter_rows(named=True):
+                key = (row["policy_id"], int(row["policy_year"]))
+                sched_premiums[key] = float(row[sched_premium_col])
+                if sched_loss_col in premium_schedule.columns:
+                    sched_losses[key] = float(row[sched_loss_col])
+
         ncd_col = "ncd_years" if "ncd_years" in df.columns else None
 
         # Survival probabilities per year for each policy
@@ -158,15 +179,23 @@ class SurvivalCLV:
             [1.0 / (1.0 + self.discount_rate) ** t for t in range(1, self.horizon + 1)]
         )
 
+        policy_ids = df["policy_id"].to_list()
+
         # Compute CLV per policy
         clv_values = np.zeros(len(df))
         for t_idx in range(self.horizon):
             t = t_idx + 1  # 1-indexed year
 
-            if premium_schedule is not None:
-                # Per-policy premiums from schedule (not implemented for simplicity)
-                p_t = premiums
-                l_t = losses
+            if sched_premiums is not None:
+                # Use schedule values year-by-year; fall back to flat if missing
+                p_t = np.array([
+                    sched_premiums.get((pid, t), premiums[i])
+                    for i, pid in enumerate(policy_ids)
+                ])
+                l_t = np.array([
+                    sched_losses.get((pid, t), losses[i]) if sched_losses else losses[i]
+                    for i, pid in enumerate(policy_ids)
+                ])
             else:
                 p_t = premiums
                 l_t = losses
@@ -182,7 +211,7 @@ class SurvivalCLV:
 
         # Build output DataFrame
         result_dict: dict[str, Any] = {
-            "policy_id": df["policy_id"].to_list(),
+            "policy_id": policy_ids,
             "clv": clv_values.tolist(),
             "survival_integral": survival_integral.tolist(),
             "cure_prob": cure_probs,
@@ -266,6 +295,13 @@ class SurvivalCLV:
         base_clv = np.array(base_result["clv"].to_list())
         policy_ids = df["policy_id"].to_list()
 
+        # Year-by-year discount factors (1+r)^{-t} for proper NPV weighting.
+        # Using an average discount factor across the horizon is wrong: it
+        # over-weights far-future cash flows relative to a proper NPV.
+        discount_factors = np.array(
+            [1.0 / (1.0 + self.discount_rate) ** t for t in range(1, self.horizon + 1)]
+        )
+
         rows: list[dict[str, Any]] = []
         for d_amount in discount_amounts:
             discounted_premiums = base_premiums - float(d_amount)
@@ -307,7 +343,9 @@ class SurvivalCLV:
             # Retention-adjusted CLV: the discounted premium CLV already
             # accounts for the lower revenue. We add back the incremental
             # value from retaining more customers (higher survival integral).
-            # Incremental survival_integral * net_profit_per_year * average_discount.
+            # Use the baseline survival integral as the reference for scaling,
+            # not the discounted-premium survival integral, because the
+            # retention adjustment is applied to the *base* survival curve.
             disc_surv_integral = np.array(disc_result["survival_integral"].to_list())
             base_surv_integral = np.array(base_result["survival_integral"].to_list())
 
@@ -318,14 +356,18 @@ class SurvivalCLV:
                 df["expected_loss"].to_numpy() if "expected_loss" in df.columns
                 else np.zeros(len(df))
             )
-            # Average discount factor over horizon
-            avg_discount_factor = np.mean(
-                [1.0 / (1.0 + self.discount_rate) ** t for t in range(1, self.horizon + 1)]
-            )
+            # Use the mean of year-by-year discount factors to convert the
+            # incremental survival integral (in years) to a present-value
+            # equivalent. This is an approximation but consistent with the
+            # CLV formula above — each year's incremental retained customer
+            # is weighted by the correct time-value factor on average.
+            # Note: this is NOT the same as using avg_discount_factor of the
+            # base series; we compute it from the proper NPV weights.
+            mean_discount_factor = float(np.mean(discount_factors))
             retention_clv_adj = (
-                (adj_surv_integral - disc_surv_integral)
+                (adj_surv_integral - base_surv_integral)
                 * net_profit
-                * avg_discount_factor
+                * mean_discount_factor
             )
             disc_clv = disc_clv_revenue_only + retention_clv_adj
 

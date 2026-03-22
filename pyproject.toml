@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "insurance-survival"
-version = "0.3.2"
+version = "0.3.3"
 description = "Survival analysis for UK insurance pricing: cure models, competing risks, recurrent events, CLV, lapse tables. Extends lifelines with insurance-specific gaps."
 readme = "README.md"
 requires-python = ">=3.10"

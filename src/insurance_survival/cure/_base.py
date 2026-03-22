@@ -338,7 +338,22 @@ class BaseMixtureCure(ABC):
         Returns
         -------
         self
+
+        Raises
+        ------
+        TypeError
+            If df is a Polars DataFrame. BaseMixtureCure uses pandas internally.
+            Convert with df.to_pandas() before calling fit().
         """
+        try:
+            import polars as _pl
+            if isinstance(df, _pl.DataFrame):
+                raise TypeError(
+                    "BaseMixtureCure.fit() requires a pandas DataFrame, not Polars. "
+                    "Convert with: df = df.to_pandas()"
+                )
+        except ImportError:
+            pass
         t, event, z, x = self._prepare_data(df, duration_col, event_col)
         rng = np.random.default_rng(self.random_state)
 

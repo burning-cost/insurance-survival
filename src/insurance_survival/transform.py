@@ -18,6 +18,7 @@ format ready for lifelines fitters.
 
 from __future__ import annotations
 
+import math
 from datetime import date
 from typing import Any
 
@@ -375,21 +376,26 @@ class ExposureTransformer:
     def _compute_exposure(self, start: float, stop: float) -> float:
         """Compute earned or written exposure for an interval.
 
-        Written exposure: full interval duration (stop - start). Appropriate
-        for volume metrics where each policy year counts as a whole unit
-        regardless of whether the year is complete at valuation.
+        Written exposure: the number of complete or partial policy years that
+        the interval spans, each counted as 1.0. Formally:
+            written = ceil(stop) - floor(start)
+        An annual policy written at inception (start=0) and valued at mid-year
+        (stop=0.5) contributes 1.0 written policy-year because the full annual
+        premium was written. A policy with two renewals (start=0, stop=2.3)
+        contributes 3.0 written years (years 0-1, 1-2, and the partial 2-3).
+        This is the standard actuarial meaning of written exposure.
 
         Earned exposure: time actually elapsed in policy-year units, which
         equals stop - start because stop has already been capped at the
         valuation cutoff date in _process_policy. For a partial last year
         (e.g. a policy incepted on 1 July valued on 31 December) this
         returns 0.5, not 1.0 -- correctly reflecting the earned fraction.
-        The difference: written assigns 1.0 to every inception year;
-        earned assigns the actual elapsed fraction.
         """
         if self.exposure_basis == "written":
-            # Written: always the full interval as recorded.
-            return stop - start
+            # Written: count each policy year that the interval touches as 1.0.
+            # ceil(stop) - floor(start) gives the number of calendar/policy-year
+            # slots that the interval overlaps, which is the standard definition.
+            return float(math.ceil(stop) - math.floor(start))
         # Earned: stop has already been capped at min(expiry, cutoff) in
         # _process_policy, so stop - start is the correct earned fraction.
         # A partial first or last year (e.g. 0.5 for a mid-year inception)
