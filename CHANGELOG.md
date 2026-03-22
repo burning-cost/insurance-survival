@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.3.4 (2026-03-22)
+- security: pin pyasn1>=0.6.3 to fix CVE-2026-30922 / GHSA-jr27-m4p2-rc6r (Denial of Service via unbounded recursion in ASN.1 decoder, affects transitive dependency pulled in by mlflow)
+
 ## v0.3.2 (2026-03-22) [unreleased]
 - Add Databricks benchmark: cure model vs Cox PH vs KM for lapse prediction
 - fix: use plain string license field for universal setuptools compatibility
@@ -23,4 +26,3 @@
 - docs: add Databricks notebook link
 - Add Related Libraries section to README
 - fix(docs): correct ExposureTransformer schema and add data to competing risks block
-
