@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "insurance-survival"
-version = "0.3.6"
+version = "0.3.7"
 description = "Survival analysis for UK insurance pricing: cure models, competing risks, recurrent events, CLV, lapse tables. Extends lifelines with insurance-specific gaps."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -36,19 +36,24 @@ dependencies = [
 
 [project.optional-dependencies]
 plot = ["matplotlib>=3.7.0"]
-mlflow = ["mlflow>=2.10.0"]
+# mlflow>=2.10.0 transitively pulls databricks-sdk -> google-auth -> rsa/pyasn1-modules -> pyasn1.
+# pyasn1 0.6.2 has CVE-2026-30922 (DoS via unbounded recursion). Pin the fix here,
+# scoped to the optional dependency that actually introduces the chain.
+mlflow = ["mlflow>=2.10.0", "pyasn1>=0.6.3"]
 excel = ["openpyxl>=3.1.0"]
 catboost = ["catboost>=1.2.0"]
 dev = [
     "pytest>=7.4.0",
     "pyarrow>=12.0",
     "mlflow>=2.10.0",
+    "pyasn1>=0.6.3",
     "catboost>=1.2.0",
     "pytest-cov>=4.1.0",
     "matplotlib>=3.7.0",
 ]
 all = [
     "mlflow>=2.10.0",
+    "pyasn1>=0.6.3",
     "openpyxl>=3.1.0",
     "catboost>=1.2.0",
     "matplotlib>=3.7.0",
