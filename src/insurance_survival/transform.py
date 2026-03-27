@@ -405,11 +405,11 @@ class ExposureTransformer:
     def _empty_schema(self, optional_cols: list[str]) -> pl.DataFrame:
         """Return empty DataFrame with correct schema."""
         schema: dict[str, pl.DataType] = {
-            "policy_id": pl.Utf8,
+            "policy_id": pl.String,
             "start": pl.Float64,
             "stop": pl.Float64,
             "event": pl.Int32,
-            "event_type": pl.Utf8,
+            "event_type": pl.String,
             "exposure_years": pl.Float64,
         }
         for col in optional_cols:

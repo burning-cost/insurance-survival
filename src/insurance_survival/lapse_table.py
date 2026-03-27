@@ -116,7 +116,7 @@ class LapseTable:
             table = self._generate_single(row_df)
             segment_label = row[by]
             table = table.with_columns(
-                pl.lit(segment_label).cast(pl.Utf8).alias(by)
+                pl.lit(segment_label).cast(pl.String).alias(by)
             )
             tables.append(table)
 

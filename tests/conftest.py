@@ -263,8 +263,8 @@ def make_transaction_dgp(
         pl.col("ncd_years").cast(pl.Int32),
         pl.col("vehicle_age").cast(pl.Int32),
         pl.col("policyholder_age").cast(pl.Int32),
-        pl.col("channel").cast(pl.Utf8),
-        pl.col("event_type").cast(pl.Utf8),
+        pl.col("channel").cast(pl.String),
+        pl.col("event_type").cast(pl.String),
     ])
     return df
 
