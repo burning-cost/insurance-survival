@@ -12,6 +12,7 @@ cif             Aalen-Johansen non-parametric CIF estimation
 fine_gray       Fine-Gray subdistribution hazard regression (core)
 gray_test       Gray's K-sample test for CIF equality across groups
 metrics         Competing-risks evaluation: Brier score, C-index, calibration
+calibration     Time-integrated calibration error, AJ recalibration, D-calibration
 datasets        Example and synthetic datasets
 plots           Visualisation helpers
 
@@ -35,6 +36,11 @@ from .datasets import (
     load_bone_marrow_transplant,
     simulate_competing_risks,
 )
+from .calibration import (
+    compute_cal_k_alpha,
+    AJRecalibrator,
+    CRDCalibration,
+)
 
 __all__ = [
     "AalenJohansenFitter",
@@ -44,4 +50,7 @@ __all__ = [
     "competing_risks_c_index",
     "load_bone_marrow_transplant",
     "simulate_competing_risks",
+    "compute_cal_k_alpha",
+    "AJRecalibrator",
+    "CRDCalibration",
 ]
