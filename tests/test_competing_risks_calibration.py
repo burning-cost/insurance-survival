@@ -38,8 +38,8 @@ def _make_competing_data(
     """
     rng = np.random.default_rng(seed)
     # Competing exponential times
-    t1 = rng.exponential(1.0 / cause1_rate, size=n)
-    t2 = rng.exponential(1.0 / cause2_rate, size=n)
+    t1 = rng.exponential(1.0 / cause1_rate, size=n) if cause1_rate > 0 else np.full(n, np.inf)
+    t2 = rng.exponential(1.0 / cause2_rate, size=n) if cause2_rate > 0 else np.full(n, np.inf)
     tc = rng.exponential(1.0 / censor_rate, size=n)
 
     T = np.minimum(np.minimum(t1, t2), tc)
