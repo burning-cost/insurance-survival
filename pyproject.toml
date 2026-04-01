@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "insurance-survival"
-version = "0.3.9"
-description = "Survival analysis for UK insurance pricing: cure models, competing risks, recurrent events, CLV, lapse tables. Extends lifelines with insurance-specific gaps."
+version = "0.4.0"
+description = "Survival analysis for UK insurance pricing: cure models, competing risks, recurrent events, CLV, lapse tables, coherent cause-specific mortality. Extends lifelines with insurance-specific gaps."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Burning Cost", email = "pricing.frontier@gmail.com" }]
-keywords = ["insurance", "survival", "lapse", "CLV", "lifelines", "actuarial", "pricing", "cure-model", "competing-risks", "frailty", "recurrent-events"]
+keywords = ["insurance", "survival", "lapse", "CLV", "lifelines", "actuarial", "pricing", "cure-model", "competing-risks", "frailty", "recurrent-events", "mortality", "Lee-Carter", "cause-specific"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Financial and Insurance Industry",
@@ -42,6 +42,9 @@ plot = ["matplotlib>=3.7.0"]
 mlflow = ["mlflow>=2.10.0", "pyasn1>=0.6.3"]
 excel = ["openpyxl>=3.1.0"]
 catboost = ["catboost>=1.2.0"]
+# mortality: Bayesian coherent cause-specific mortality (DMP framework, arXiv:2603.00973)
+# NumPyro + JAX is the MCMC backend. arviz is optional but recommended for diagnostics.
+mortality = ["numpyro>=0.13.0", "jax>=0.4.25"]
 dev = [
     "pytest>=7.4.0",
     "pyarrow>=12.0",
@@ -57,6 +60,8 @@ all = [
     "openpyxl>=3.1.0",
     "catboost>=1.2.0",
     "matplotlib>=3.7.0",
+    "numpyro>=0.13.0",
+    "jax>=0.4.25",
 ]
 
 [project.urls]

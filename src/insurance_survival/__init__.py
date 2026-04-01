@@ -42,6 +42,16 @@ v0.2.0 adds:
   See insurance_survival.recurrent for AndersenGillFrailty, PWPModel,
   JointFrailtyModel, and simulation utilities.
 
+v0.4.0 adds:
+- insurance_survival.mortality subpackage: Coherent cause-specific mortality
+  forecasting using the Dirichlet-Multinomial-Poisson (DMP) framework from
+  Nigri, Shang & Ungolo (2026, arXiv:2603.00973).
+  Enforces sum_c m_{a,t,c} = m_{a,t} by construction at every posterior draw —
+  no post-hoc reconciliation. Two variants: LC-DM (Lee-Carter, recommended) and
+  AP-DM (additive age-period with RW2 priors). HMC via NumPyro (optional dep).
+  See insurance_survival.mortality for CauseSpecificMortality, MortalityForecast,
+  HMDLoader. Requires: pip install insurance-survival[mortality]
+
 Quick start::
 
     import polars as pl
@@ -93,6 +103,18 @@ For recurrent events with frailty::
     model = AndersenGillFrailty(frailty="gamma").fit(data)
     scores = model.credibility_scores()
 
+For coherent cause-specific mortality forecasting (CI/LTC/annuity pricing)::
+
+    from insurance_survival.mortality import CauseSpecificMortality, HMDLoader
+
+    deaths, exposure, ages, years = HMDLoader.load_synthetic(
+        n_ages=18, n_years=40, n_causes=6
+    )
+    model = CauseSpecificMortality(model_type="LC")
+    model.fit(deaths, exposure, age_labels=ages, year_labels=years)
+    forecast = model.forecast(horizon=20)
+    forecast.coherence_check()  # True — by construction
+
 Use lifelines directly for:
 - CoxPHFitter, WeibullAFTFitter, LogNormalAFTFitter
 - KaplanMeierFitter, NelsonAalenFitter
@@ -123,4 +145,6 @@ __all__ = [
     "register_survival_model",
     # v0.2: subpackages (import from insurance_survival.cure etc.)
     # "cure", "competing_risks", "recurrent"
+    # v0.4: mortality subpackage (import from insurance_survival.mortality)
+    # "mortality"
 ]
