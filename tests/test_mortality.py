@@ -274,7 +274,11 @@ class TestCauseSpecificMortality:
 
         # Patch the lazy import to simulate missing NumPyro
         def fake_require():
-            raise ImportError("No module named 'numpyro'")
+            raise ImportError(
+                "NumPyro is required for CauseSpecificMortality fitting. "
+                "Install it with: pip install insurance-survival[mortality]\n"
+                "Original error: No module named 'numpyro'"
+            )
 
         monkeypatch.setattr(mort_mod, "_require_numpyro", fake_require)
 
