@@ -228,6 +228,42 @@ print(model.summary())
 scores = model.credibility_scores()
 ```
 
+### `insurance_survival.evaluation` — proper scoring rules for censored survival forecasts
+
+`CensoredForecastEvaluator` implements threshold-weighted CRPS (twCRPS) and related proper scoring rules for right-censored time-to-event forecasts, based on Taggart, Loveday & Louis (arXiv:2603.14835). Use it to compare survival models on held-out lapse or settlement data where some policyholders are censored at the evaluation date.
+
+The scoring framework requires a fixed evaluation horizon tau — the same for all observations. The typical use case in UK insurance is a single policy term (12 months for motor and home) or a fixed administrative censoring date.
+
+```python
+import numpy as np
+from scipy.stats import weibull_min
+from insurance_survival.evaluation import CensoredForecastEvaluator
+
+rng = np.random.default_rng(42)
+n = 1_000
+tau = 12.0  # 12-month evaluation horizon (months)
+
+# Simulate lapse times, censored at policy term end
+T_true = weibull_min.rvs(c=1.5, scale=18.0, size=n, random_state=42)
+T_obs = np.minimum(T_true, tau)
+event = (T_true <= tau).astype(int)
+
+# Survival functions: true Weibull(1.5, 18) vs misspecified Exponential
+true_surv  = [lambda t, c=1.5, s=18.0: weibull_min.sf(t, c=c, scale=s)] * n
+wrong_surv = [lambda t, s=18.0: np.exp(-t / s)] * n  # exponential: wrong shape
+
+ev = CensoredForecastEvaluator(tau=tau, warn=False)
+print(ev.twcrps(true_surv, T_obs, event))   # lower is better
+print(ev.twcrps(wrong_surv, T_obs, event))  # should be higher
+
+# Multi-model comparison table
+comparison = ev.compare({
+    "Weibull(1.5)": (true_surv, T_obs, event),
+    "Exponential":  (wrong_surv, T_obs, event),
+})
+print(comparison)
+```
+
 ## The credibility connection
 
 For gamma frailty, the posterior mean frailty is:
