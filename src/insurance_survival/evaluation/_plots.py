@@ -181,7 +181,7 @@ def reliability_diagram(
 
     # Predicted P(T > eval_time) = S(eval_time)
     t_arr = np.array([eval_time])
-    p_pred = np.array([float(np.clip(surv_fns[i](t_arr), 0.0, 1.0)) for i in range(n)])
+    p_pred = np.array([float(np.clip(surv_fns[i](t_arr)[0], 0.0, 1.0)) for i in range(n)])
 
     # Sort by predicted probability and bin
     sort_idx = np.argsort(p_pred)

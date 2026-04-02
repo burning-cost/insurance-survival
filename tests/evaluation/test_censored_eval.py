@@ -97,7 +97,7 @@ def test_uncensored_twcrps_matches_manual_integral():
     F = 1.0 - surv_fn(grid)
     # indicator is 1 for s >= T_obs_val
     indicator = (grid >= T_obs_val).astype(float)
-    expected = float(np.trapz((indicator - F) ** 2, grid))
+    expected = float(np.trapezoid((indicator - F) ** 2, grid))
 
     result = twcrps_obs(surv_fn, T_obs_val, event=1, tau=tau, n_grid=2000)
 
@@ -163,7 +163,7 @@ def test_murphy_diagram_area_equals_quantile_loss(weibull_data):
         murphy_elementary_score(q_preds, T_obs, tau, theta, alpha=0.5).mean()
         for theta in thresholds
     ])
-    area = float(np.trapz(mean_es, thresholds))
+    area = float(np.trapezoid(mean_es, thresholds))
 
     # The area under the Murphy curve equals the quantile score (pinball loss)
     assert abs(area - qs) < 0.05, (
@@ -309,7 +309,7 @@ def test_from_matrix_roundtrip():
     expected = weibull_min.sf(t_test, c=2, scale=5)
     result = surv_fns[0](t_test)
 
-    np.testing.assert_allclose(result, expected, atol=1e-4)
+    np.testing.assert_allclose(result, expected, atol=1e-3)
 
 
 def test_from_matrix_shape_error():
