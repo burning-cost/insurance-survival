@@ -52,6 +52,15 @@ v0.4.0 adds:
   See insurance_survival.mortality for CauseSpecificMortality, MortalityForecast,
   HMDLoader. Requires: pip install insurance-survival[mortality]
 
+v0.6.0 adds:
+- insurance_survival.evaluation subpackage: Proper scoring rules for right-censored
+  time-to-event forecasts. Based on Taggart, Loveday & Louis (2026, arXiv:2603.14835).
+  Implements threshold-weighted CRPS (twCRPS), quantile score, interval score, Murphy
+  diagrams, and reliability diagrams under provisional strict propriety. The confirmed
+  gap: no existing library (pycox, scikit-survival, lifelines) provides proper scoring
+  rules for predictive survival distributions under censoring.
+  See insurance_survival.evaluation for CensoredForecastEvaluator, from_matrix.
+
 Quick start::
 
     import polars as pl
