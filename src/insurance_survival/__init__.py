@@ -103,6 +103,15 @@ For recurrent events with frailty::
     model = AndersenGillFrailty(frailty="gamma").fit(data)
     scores = model.credibility_scores()
 
+v0.5.0 adds:
+- insurance_survival.mortality.LifetimeBoundsCalculator: worst/best-case
+  contract bounds from life table data without fractional age assumption.
+  Implements Dupret & Motte (2026, arXiv:2603.06238). Supports annuity,
+  death benefit, and general payoff functionals. CMI S3 table built-in for
+  exploratory use. Quantifies model risk from within-year mortality timing.
+  See insurance_survival.mortality for LifetimeBoundsCalculator, LifetimeBoundsResult.
+  Pure numpy/scipy — no extra install required.
+
 For coherent cause-specific mortality forecasting (CI/LTC/annuity pricing)::
 
     from insurance_survival.mortality import CauseSpecificMortality, HMDLoader
@@ -114,6 +123,16 @@ For coherent cause-specific mortality forecasting (CI/LTC/annuity pricing)::
     model.fit(deaths, exposure, age_labels=ages, year_labels=years)
     forecast = model.forecast(horizon=20)
     forecast.coherence_check()  # True — by construction
+
+For lifetime bounds (within-year mortality model risk)::
+
+    from insurance_survival.mortality import LifetimeBoundsCalculator
+
+    calc = LifetimeBoundsCalculator.from_cmi("S3PML", starting_age=65, n_years=10)
+    result = calc.annuity_bounds(t=0.0, T=10.0)
+    print(f"Annuity spread: {result.spread_pct:.2f}%")
+    df = calc.fractional_age_comparison(0.0, 10.0)
+    print(df)  # UDD/CFM/Balducci vs theoretical bounds
 
 Use lifelines directly for:
 - CoxPHFitter, WeibullAFTFitter, LogNormalAFTFitter
