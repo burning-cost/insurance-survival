@@ -2,7 +2,9 @@
 
 [![Tests](https://github.com/burning-cost/insurance-survival/actions/workflows/tests.yml/badge.svg)](https://github.com/burning-cost/insurance-survival/actions/workflows/tests.yml)
 [![PyPI](https://img.shields.io/pypi/v/insurance-survival)](https://pypi.org/project/insurance-survival/)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+[![Downloads](https://img.shields.io/pypi/dm/insurance-survival)](https://pypi.org/project/insurance-survival/)
+[![Python](https://img.shields.io/pypi/pyversions/insurance-survival)](https://pypi.org/project/insurance-survival/)
+[![License](https://img.shields.io/pypi/l/insurance-survival)](https://pypi.org/project/insurance-survival/)
 
 Survival analysis for UK insurance pricing.
 
@@ -418,3 +420,11 @@ A ready-to-run Databricks notebook benchmarking this library against standard ap
 | [insurance-datasets](https://github.com/burning-cost/insurance-datasets) | Synthetic UK motor and home datasets — use to prototype before applying to real data |
 
 [All Burning Cost libraries ->](https://burning-cost.github.io)
+
+## Related Libraries
+
+| Library | Description |
+|---------|-------------|
+| [`insurance-credibility`](https://github.com/burning-cost/insurance-credibility) | Bühlmann-Straub credibility — blend survival curve estimates from thin schemes with portfolio priors |
+| [`insurance-monitoring`](https://github.com/burning-cost/insurance-monitoring) | Post-deployment monitoring — track lapse and renewal rate drift against survival model predictions |
+| [`insurance-distributional`](https://github.com/burning-cost/insurance-distributional) | Distributional GBMs — complement survival analysis with full loss distribution modelling |
